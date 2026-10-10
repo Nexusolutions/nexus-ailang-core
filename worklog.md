@@ -149,3 +149,26 @@ Stage Summary:
 - Package manager: 7 comandos (init/install/list/run/publish/update/remove/search).
 - DAP: 14 métodos con threading real del debugger.
 - AIR interpreter: --air flag funcional (compila + verifica + ejecuta).
+
+---
+Task ID: EXEC-5
+Agent: Super Z (orchestrator)
+Task: Continuar con T1-T5: HIR decomposed + AIR interpreter, Crypto API, Tensor con autograd, Module system con circular dep detection, Coverage branch-level
+
+Work Log:
+- T1: Reescribí ailang/ir/hir.py con expresiones decomuestas en instrucciones stack-based (LOAD_CONST, LOAD_NAME, BINARY_OP, CALL, etc.). Actualicé mir.py (pass-through con SSA versioning), air.py (no crea entry vacío, mapeo ampliado), pipeline.py (globals_block lowering). Reescribí air_interpreter.py para ejecutar AIR directamente sin VM. MIRVar frozen=True para hashable. Verificado: 1+2, 1+2*3, fn calls, nested calls, recursion.
+- T2: Creé ailang/lang/stdlib/crypto.py con 17 funciones: hash (sha256/sha512/blake2b), HMAC, random (bytes/hex/token), Ed25519 (generate_keypair/sign/verify), KDF (hkdf/pbkdf2), AES-256-GCM (encrypt/decrypt), Fernet (generate_key/encrypt/decrypt). Capability crypto.use añadida. Effect crypto añadido al effect checker. Verificado end-to-end con capability enforcement.
+- T3: Creé ailang/lang/stdlib/tensor.py con clase Tensor: dtype/shape/ndim/size, operaciones (add/mul/matmul/softmax/relu/sum/mean/transpose), autograd (requires_grad/backward/gradient tape/_grad_fn/_parents), constructores (tensor/zeros/ones/randn/eye). Capability hardware.gpu requerida. Verificado: matmul+autograd (gradientes correctos), softmax+backward, ReLU+backward.
+- T4: Creé ailang/modules.py con ModuleResolver: path resolution, circular dependency detection (reporta ciclo a→b→a), module cache, builtin support, stats. Excepciones CircularImportError y ModuleNotFoundError. Verificado: builtin load, user module, not found, circular detection, cache.
+- T5: Reescribí ailang/coverage_tool.py con branch-level coverage: statement coverage (lines), branch coverage (if/while true_taken/false_taken), function coverage (called/call_count), loop coverage (iterations), summary con porcentajes. Fix del test_nivel_d que esperaba formato antiguo.
+- Versión bumped a 5.6.0. CHANGELOG actualizado.
+
+Stage Summary:
+- Tests totales: 173 pytest + 44 embebidos = 217. 100% verde.
+- ailang doctor: 11/11 componentes OK.
+- AIR interpreter nativo: ejecuta sin VM (decomposed HIR → MIR → AIR → direct execution).
+- Stdlib: 15 módulos (io, math, strings, json, time, http, path, sys, random, listops, test, re, brain, crypto, tensor).
+- Crypto: 17 funciones con Ed25519, AES-256-GCM, Fernet, HKDF, PBKDF2.
+- Tensor: autograd completo (matmul, softmax, relu, sum, mean, transpose).
+- Module system: circular dependency detection funcional.
+- Coverage: branch-level (true/false tracking por if/while).

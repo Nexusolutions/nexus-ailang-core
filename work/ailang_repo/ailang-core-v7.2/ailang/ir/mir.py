@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 from typing import Any, List, Optional, Set
 
 
-@dataclass
+@dataclass(frozen=True)
 class MIRVar:
-    """Variable MIR en forma SSA-lite (versionada)."""
+    """Variable MIR en forma SSA-lite (versionada). frozen=True para hashable."""
     name: str
     version: int = 0
     def __repr__(self): return f"{self.name}.{self.version}"
@@ -57,8 +57,9 @@ class MIRFunction:
 def lower_hir_to_mir(hir_fn) -> MIRFunction:
     """Lowering: HIRFunction → MIRFunction.
 
-    Traducción directa con renombrado SSA-lite. Cada `let`/`assign` crea
-    una nueva versión de la variable.
+    T1: HIR ahora produce instrucciones stack-based (LOAD_CONST, LOAD_NAME,
+    BINARY_OP, etc.). MIR pasa estas instrucciones directamente, aplicando
+    SSA versioning solo en STORE_NAME/DEFINE_NAME.
     """
     mir_fn = MIRFunction(
         name=hir_fn.name,
@@ -67,57 +68,54 @@ def lower_hir_to_mir(hir_fn) -> MIRFunction:
     entry = MIRBlock(label="entry")
     mir_fn.blocks.append(entry)
 
-    var_versions = {}  # name → current version
-
-    def get_var(name: str) -> MIRVar:
-        if name not in var_versions:
-            var_versions[name] = 0
-        return MIRVar(name, var_versions[name])
-
-    def new_version(name: str) -> MIRVar:
-        v = mir_fn.new_var(name)
-        var_versions[name] = v.version
-        return v
+    # T1: Pass through stack-based HIR instructions directly.
+    # MIR optimizations (constant_fold, dead_code_elimination) operate on
+    # the const/copy/binop ops that HIR now produces.
+    _OP_MAP = {
+        "LOAD_CONST": "const",
+        "LOAD_NAME": "load",
+        "STORE_NAME": "store",
+        "DEFINE_NAME": "store",
+        "BINARY_OP": "binop",
+        "UNARY_OP": "unop",
+        "CALL": "call",
+        "RETURN": "ret",
+        "JUMP": "br",
+        "JUMP_IF_FALSE": "br_if",
+        "POP": "pop",
+        "YIELD": "yield",
+        "THROW": "throw",
+        "BREAK": "break",
+        "CONTINUE": "continue",
+        "MAKE_FUNCTION": "make_fn",
+        "BUILD_LIST": "build_list",
+        "BUILD_DICT": "build_dict",
+        "GET_ITEM": "get_item",
+        "LOAD_ATTR": "load_attr",
+        "STORE_ATTR": "store_attr",
+        "IMPORT_MODULE": "import",
+        "SETUP_CATCH": "setup_catch",
+        "POP_CATCH": "pop_catch",
+        "EXPR": "expr",
+    }
 
     for instr in hir_fn.body.instructions:
-        if instr.op == "let" or instr.op == "const":
-            val = instr.args[0]
-            target = new_version(instr.result.name)
-            if val.kind == "literal":
-                entry.instructions.append(MIRInstruction(
-                    op="const", args=[val.value], result=target, line=instr.line,
-                ))
-            else:
-                entry.instructions.append(MIRInstruction(
-                    op="copy", args=[get_var(val.name)], result=target, line=instr.line,
-                ))
-        elif instr.op == "assign":
-            val = instr.args[0]
-            target = new_version(instr.result.name)
-            if val.kind == "literal":
-                entry.instructions.append(MIRInstruction(
-                    op="const", args=[val.value], result=target, line=instr.line,
-                ))
-            else:
-                entry.instructions.append(MIRInstruction(
-                    op="copy", args=[get_var(val.name)], result=target, line=instr.line,
-                ))
-        elif instr.op == "return":
-            if instr.args:
-                entry.instructions.append(MIRInstruction(
-                    op="ret", args=[instr.args[0]], line=instr.line,
-                ))
-            else:
-                entry.instructions.append(MIRInstruction(op="ret", line=instr.line))
-        elif instr.op == "expr":
-            entry.instructions.append(MIRInstruction(
-                op="expr", args=instr.args, line=instr.line,
-            ))
-        elif instr.op == "yield":
-            entry.instructions.append(MIRInstruction(
-                op="yield", args=instr.args, line=instr.line,
-            ))
-        # else: simplificación — HIR completo requiere más opcodes
+        mir_op = _OP_MAP.get(instr.op, instr.op.lower())
+        mir_args = list(instr.args)
+        # Filter out LABEL pseudo-instructions (handled at AIR level)
+        if mir_op == "label":
+            continue  # labels are resolved at AIR interpreter level
+
+        # Para binop/unop, solo el operador string (operands are on stack)
+        # No need to add None placeholders.
+
+        mir_instr = MIRInstruction(
+            op=mir_op,
+            args=mir_args,
+            result=MIRVar(instr.result) if instr.result else None,
+            line=instr.line,
+        )
+        entry.instructions.append(mir_instr)
 
     return mir_fn
 

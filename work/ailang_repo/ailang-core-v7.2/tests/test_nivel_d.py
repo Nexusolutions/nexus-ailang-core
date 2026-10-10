@@ -31,8 +31,9 @@ Color.Green
         self.assertIn("status", r)
 
     def test_coverage(self):
+        # T5: coverage_source ahora retorna summary con branch/function coverage
         c = coverage_source("let a = 1\nlet b = 2\na + b")
-        self.assertGreater(c["coverage"], 0)
+        self.assertGreater(c["summary"]["line_coverage"], 0)
         self.assertEqual(c["result"], 3)
 
     def test_project(self):

@@ -16,6 +16,8 @@ from ailang.lang.stdlib import path_mod as _path
 from ailang.lang.stdlib import random_mod as _random
 from ailang.lang.stdlib import re_mod as _re
 from ailang.lang.stdlib import http_mod as _http
+from ailang.lang.stdlib import crypto as _crypto
+from ailang.lang.stdlib import tensor as _tensor
 
 
 class Module:
@@ -129,5 +131,32 @@ def builtin_modules() -> Dict[str, Module]:
             "ceil": _math.ceil_,
             "pi": _math.pi,
             "e": _math.e,
+        }),
+        "crypto": Module("crypto", {
+            "sha256": _crypto.sha256,
+            "sha512": _crypto.sha512,
+            "blake2b": _crypto.blake2b,
+            "hmac_sha256": _crypto.hmac_sha256,
+            "random_bytes": _crypto.random_bytes,
+            "random_hex": _crypto.random_hex,
+            "random_token": _crypto.random_token,
+            "generate_keypair": _crypto.generate_keypair,
+            "sign": _crypto.sign,
+            "verify": _crypto.verify,
+            "hkdf": _crypto.hkdf,
+            "pbkdf2": _crypto.pbkdf2,
+            "aes_encrypt": _crypto.aes_encrypt,
+            "aes_decrypt": _crypto.aes_decrypt,
+            "generate_fernet_key": _crypto.generate_fernet_key,
+            "fernet_encrypt": _crypto.fernet_encrypt,
+            "fernet_decrypt": _crypto.fernet_decrypt,
+        }),
+        "tensor": Module("tensor", {
+            "tensor": _tensor.tensor,
+            "Tensor": _tensor.Tensor,
+            "zeros": _tensor.zeros,
+            "ones": _tensor.ones,
+            "randn": _tensor.randn,
+            "eye": _tensor.eye,
         }),
     }

@@ -1,5 +1,68 @@
 # Changelog
 
+## 5.6.0 — T1 + T2 + T3 + T4 + T5
+
+### T1 — HIR decomposed + AIR interpreter nativo
+- `ailang/ir/hir.py` reescrito: expresiones se descomponen en instrucciones stack-based
+  (LOAD_CONST, LOAD_NAME, BINARY_OP, CALL, etc.) que el AIR interpreter ejecuta directamente.
+- `ailang/ir/mir.py` actualizado: pass-through de instrucciones stack-based con SSA versioning.
+- `ailang/ir/air.py` actualizado: no crea bloque entry vacío; mapeo de opcodes ampliado.
+- `ailang/ir/pipeline.py` actualizado: globals_block lowering a AIR.
+- `ailang/runtime/air_interpreter.py` reescrito: ejecuta AIR directamente sin delegar a VM.
+  Verificado end-to-end: `1+2`, `1+2*3`, `fn add(a,b){return a+b}`, nested calls, recursion.
+- MIRVar ahora `frozen=True` (hashable) para usar en sets.
+
+### T2 — Cryptography API (FASE 35)
+- `ailang/lang/stdlib/crypto.py`: 17 funciones:
+  - Hash: sha256, sha512, blake2b
+  - HMAC: hmac_sha256
+  - Random: random_bytes, random_hex, random_token
+  - Ed25519: generate_keypair, sign, verify
+  - KDF: hkdf, pbkdf2
+  - AES-256-GCM: aes_encrypt, aes_decrypt
+  - Fernet: generate_fernet_key, fernet_encrypt, fernet_decrypt
+- Capability `crypto.use` añadida al catálogo y al effect checker.
+- Todas las operaciones requieren `crypto.use` capability.
+- Verificado: sha256, Ed25519 sign/verify, AES encrypt/decrypt, Fernet round-trip.
+
+### T3 — Tensor type con autograd (FASE 33)
+- `ailang/lang/stdlib/tensor.py`: clase Tensor con:
+  - dtype, shape, ndim, size
+  - Operaciones: add, mul, matmul, softmax, relu, sum, mean, transpose
+  - Autograd: requires_grad, backward(), gradient tape, _grad_fn, _parents
+  - Constructores: tensor, zeros, ones, randn, eye
+- Capability `hardware.gpu` requerida (CPU fallback via NumPy).
+- Verificado: matmul + autograd (gradientes correctos), softmax + backward,
+  ReLU + backward (gradiente 0 para inputs negativos, 1 para positivos).
+
+### T4 — Module system con circular dependency detection (FASE 17)
+- `ailang/modules.py`: ModuleResolver con:
+  - Path resolution (relativo y absoluto)
+  - Circular dependency detection (reporta el ciclo completo: a → b → a)
+  - Module cache (evita re-importar)
+  - Builtin module support (stdlib)
+  - Stats (loads, cache_hits, cached_modules)
+- Excepciones: CircularImportError, ModuleNotFoundError
+- Verificado: builtin load, user module load, not found, circular detection, cache.
+
+### T5 — Coverage branch-level (P2-6)
+- `ailang/coverage_tool.py` reescrito con:
+  - Statement coverage (líneas ejecutadas)
+  - Branch coverage (if/while: true_taken/false_taken)
+  - Function coverage (called/call_count)
+  - Loop coverage (iterations count)
+  - Summary con porcentajes: line_coverage, branch_coverage, function_coverage
+- Verificado: programa con if/while/fn reporta correctamente branches no cubiertos.
+
+### Métricas
+- Tests `pytest tests/`: 173/173 ✅.
+- Tests embebidos monolito: 44/44 ✅.
+- `ailang doctor`: 11/11 componentes OK.
+- AIR interpreter nativo: ejecuta sin VM (1+2, fn calls, nested, recursion).
+- Stdlib: 15 módulos (io, math, strings, json, time, http, path, sys, random,
+  listops, test, re, brain, crypto, tensor).
+- Versión: 5.6.0.
+
 ## 5.5.0 — S1 + S2 + S3 + S4 + S5
 
 ### S1 — Intérprete AIR nativo

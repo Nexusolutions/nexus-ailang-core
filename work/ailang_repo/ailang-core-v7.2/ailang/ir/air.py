@@ -99,7 +99,7 @@ class AIRModule:
 def lower_mir_to_air(mir_fn: MIRFunction, hir_fn) -> AIRFunction:
     """Lowering: MIRFunction + HIRFunction → AIRFunction.
 
-    Combina la estructura CFG del MIR con los tipos/effects/capabilities del HIR.
+    T1: no crea un bloque entry vacío — usa los bloques del MIR directamente.
     """
     air_fn = AIRFunction(
         name=mir_fn.name,
@@ -108,10 +108,8 @@ def lower_mir_to_air(mir_fn: MIRFunction, hir_fn) -> AIRFunction:
         is_async=hir_fn.is_async,
         is_generator=hir_fn.is_generator,
     )
-    entry = AIRBlock(label="entry")
-    air_fn.blocks.append(entry)
 
-    # Traducción directa MIR → AIR
+    # T1: Iterate MIR blocks directly (don't create separate empty entry)
     for mir_block in mir_fn.blocks:
         air_block = AIRBlock(label=mir_block.label)
         for mir_instr in mir_block.instructions:
@@ -149,22 +147,35 @@ def lower_mir_to_air(mir_fn: MIRFunction, hir_fn) -> AIRFunction:
 
 
 def _mir_op_to_air_op(mir_op: str) -> Optional[int]:
-    """Mapea opcode MIR (string) a opcode AIR (int)."""
+    """Mapea opcode MIR (string) a opcode AIR (int). T1: ampliada para stack-based ops."""
     mapping = {
         "const": LOAD_CONST,
-        "copy": LOAD_NAME,  # copy var → load + store
+        "copy": LOAD_NAME,
         "load": LOAD_NAME,
         "store": STORE_NAME,
         "binop": BINARY_OP,
+        "unop": UNARY_OP,
         "call": CALL,
         "ret": RETURN,
         "br": JUMP,
-        "br_if": JUMP_IF_FALSE,  # negado
+        "br_if": JUMP_IF_FALSE,
         "yield": YIELD,
         "spawn": SPAWN,
         "await": AWAIT,
         "throw": THROW,
-        "expr": CALL,  # placeholder
+        "expr": POP,  # expression statement: pop result
+        "pop": POP,
+        "break": JUMP,  # break/continue: mapped to JUMP (target resolved later)
+        "continue": JUMP,
+        "make_fn": MAKE_FUNCTION,
+        "build_list": BUILD_LIST,
+        "build_dict": BUILD_DICT,
+        "get_item": GET_ITEM,
+        "load_attr": LOAD_ATTR,
+        "store_attr": STORE_ATTR,
+        "import": IMPORT_MODULE,
+        "setup_catch": SETUP_CATCH,
+        "pop_catch": POP_CATCH,
     }
     return mapping.get(mir_op)
 

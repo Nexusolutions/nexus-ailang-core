@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Dict, Set
 
 from ailang.lang.parser import parse
-from ailang.ir.hir import lower_ast_to_hir, HIRModule
+from ailang.ir.hir import lower_ast_to_hir, HIRModule, HIRType, HIRFunction
 from ailang.ir.mir import lower_hir_to_mir, MIRFunction, constant_fold, dead_code_elimination
 from ailang.ir.air import lower_mir_to_air, AIRModule, AIRFunction, format_air_function
 from ailang.semantic.effects import infer_effects
@@ -40,13 +40,10 @@ def compile_to_mir(source: str, *, optimize: bool = True) -> list:
 def compile_to_air(source: str, *, optimize: bool = True) -> AIRModule:
     """AST → HIR → MIR → AIR (pipeline completo).
 
-    P3-1b: integra effect inference del effect checker (P3-8) y traduce
-    effects → capabilities (P3-9) para que el AIR module exponga las
-    capabilities requeridas.
+    T1: integra effect inference + capability mapping + globals_block lowering.
     """
     program = parse(source)
     hir_module = lower_ast_to_hir(program)
-    # P3-8: inferir effects de cada función
     fn_effects = infer_effects(program)
     air_module = AIRModule(name=hir_module.name)
     for hir_fn in hir_module.functions:
@@ -55,13 +52,28 @@ def compile_to_air(source: str, *, optimize: bool = True) -> AIRModule:
             constant_fold(mir_fn)
             dead_code_elimination(mir_fn)
         air_fn = lower_mir_to_air(mir_fn, hir_fn)
-        # P3-1b: inyectar effects y capabilities inferidas
         fn_eff = fn_effects.get(hir_fn.name, {"pure"})
         air_fn.required_effects.update(fn_eff)
         for effect in fn_eff:
             caps = EFFECT_TO_CAPABILITY.get(effect, set())
             air_fn.required_capabilities.update(caps)
         air_module.functions.append(air_fn)
+
+    # T1: Lower globals_block (top-level code) to AIR
+    if hir_module.globals_block.instructions:
+        from ailang.ir.hir import HIRFunction
+        temp_hir_fn = HIRFunction(
+            name="<globals>", params=[], return_type=HIRType.any(),
+            body=hir_module.globals_block, line=0, is_async=False, is_generator=False,
+        )
+        mir_globals = lower_hir_to_mir(temp_hir_fn)
+        if optimize:
+            constant_fold(mir_globals)
+            dead_code_elimination(mir_globals)
+        air_globals = lower_mir_to_air(mir_globals, temp_hir_fn)
+        if air_globals.blocks:
+            air_module.globals_block = air_globals.blocks[0]
+
     return air_module
 
 

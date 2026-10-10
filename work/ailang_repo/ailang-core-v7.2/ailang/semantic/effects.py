@@ -21,7 +21,7 @@ from ailang.lang import ast_nodes as A
 from ailang.lang.parser import parse
 
 
-EFFECTS: Set[str] = {"pure", "io", "filesystem", "network", "ai", "hardware", "process", "unsafe"}
+EFFECTS: Set[str] = {"pure", "io", "filesystem", "network", "ai", "hardware", "process", "unsafe", "crypto"}
 
 BUILTIN_EFFECTS: Dict[str, Set[str]] = {
     "print": {"io"},
@@ -49,6 +49,16 @@ STD_MODULE_EFFECTS: Dict[str, Dict[str, Set[str]]] = {
             "sub": {"pure"}, "split": {"pure"}},
     "brain": {"ingest": {"ai", "filesystem"}, "query": {"ai"},
                "think": {"ai"}, "graph": {"ai"}},
+    "crypto": {
+        "sha256": {"crypto"}, "sha512": {"crypto"}, "blake2b": {"crypto"},
+        "hmac_sha256": {"crypto"},
+        "random_bytes": {"crypto"}, "random_hex": {"crypto"}, "random_token": {"crypto"},
+        "generate_keypair": {"crypto"}, "sign": {"crypto"}, "verify": {"crypto"},
+        "hkdf": {"crypto"}, "pbkdf2": {"crypto"},
+        "aes_encrypt": {"crypto"}, "aes_decrypt": {"crypto"},
+        "generate_fernet_key": {"crypto"},
+        "fernet_encrypt": {"crypto"}, "fernet_decrypt": {"crypto"},
+    },
 }
 
 

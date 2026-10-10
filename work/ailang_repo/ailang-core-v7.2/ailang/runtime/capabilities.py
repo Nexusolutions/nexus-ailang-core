@@ -47,6 +47,7 @@ KNOWN_CAPABILITIES: Set[str] = {
     "hardware.gpu", "hardware.npu", "hardware.tpu",
     "database.read", "database.write",
     "system.env",
+    "crypto.use",  # T2: FASE 35 — criptografía
 }
 
 # Mapa effect → capability requerida
@@ -59,6 +60,7 @@ EFFECT_TO_CAPABILITY: Dict[str, Set[str]] = {
     "hardware": {"hardware.gpu", "hardware.npu", "hardware.tpu"},
     "unsafe": set(),  # unsafe requiere None explícito
     "pure": set(),
+    "crypto": {"crypto.use"},  # T2: FASE 35
 }
 
 
