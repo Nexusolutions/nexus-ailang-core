@@ -13,6 +13,28 @@ from ailang.versions import __version__
 
 def main(argv=None):
     raw = list(argv) if argv is not None else sys.argv[1:]
+    if raw and raw[0] == "new":
+        # Y4: ailang new <template> <name> [--dest DIR]
+        from ailang.project_templates import create_project, list_templates
+        if len(raw) < 3:
+            print("Usage: ailang new <template> <name> [--dest DIR]")
+            print("Templates:")
+            for t, desc in list_templates().items():
+                print(f"  {t:10s} — {desc}")
+            return 1
+        template = raw[1]
+        name = raw[2]
+        dest = None
+        for arg in raw[3:]:
+            if arg.startswith("--dest="):
+                dest = arg.split("=", 1)[1]
+            elif arg == "--dest" and len(raw) > raw.index(arg) + 1:
+                dest = raw[raw.index(arg) + 1]
+        root = create_project(name, template, dest)
+        print(f"✅ Created {template} project: {root}")
+        print(f"   cd {root.name}")
+        print(f"   python -m ailang main.ailang  # or server.ailang for web")
+        return 0
     if raw and raw[0] == "doctor":
         from ailang.doctor import run_doctor
         return run_doctor()
@@ -133,6 +155,8 @@ def main(argv=None):
     p.add_argument("--bp", action="append", type=int, default=[], help="Breakpoint línea (repetible)")
     p.add_argument("--agent", metavar="GOAL", help="Ejecutar agente demo con goal")
     p.add_argument("--dap", action="store_true", help="Debug Adapter Protocol (stdio)")
+    p.add_argument("--serve", action="store_true", help="Start playground web server")
+    p.add_argument("--port", type=int, default=8080, help="Port for playground server")
     p.add_argument("--allow", action="append", default=[], metavar="CAP",
                    help="Conceder capability (repetible, ej: filesystem.read)")
     p.add_argument("--deny", action="append", default=[], metavar="CAP",
@@ -145,6 +169,11 @@ def main(argv=None):
 
     if args.version:
         print(f"AILang {__version__}")
+        return 0
+
+    if getattr(args, 'serve', False):
+        from ailang.playground.server import serve
+        serve(getattr(args, 'port', 8080))
         return 0
 
     if args.lsp:

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AILang — Lenguaje de programación con runtime cognitivo</title>
+  <meta name="description" content="AILang es un lenguaje de programación con runtime cognitivo, capability enforcement, pipeline HIR/MIR/AIR, y backends LLVM/WASM.">
+  <style>
+    :root { --bg: #0d1117; --bg-card: #161b22; --border: #30363d; --text: #e6edf3; --text-dim: #8b949e; --accent: #00d4ff; --green: #3fb950; --yellow: #d29922; --purple: #bc8cff; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    code { font-family: 'Fira Code', monospace; background: var(--bg-card); padding: 2px 8px; border-radius: 4px; font-size: 0.9em; color: var(--accent); }
+    nav { position: fixed; top: 0; width: 100%; background: rgba(13,17,23,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 100; padding: 12px 0; }
+    nav .inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 32px; }
+    nav .logo { font-size: 22px; font-weight: 800; color: var(--accent); }
+    nav .links { display: flex; gap: 24px; flex: 1; }
+    nav .links a { color: var(--text-dim); font-size: 15px; }
+    nav .cta { background: var(--accent); color: #000; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+    .hero { padding: 140px 24px 80px; text-align: center; max-width: 900px; margin: 0 auto; }
+    .hero h1 { font-size: 56px; font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+    .hero h1 .grad { background: linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 20px; color: var(--text-dim); margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto; }
+    .hero .buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { background: var(--accent); color: #000; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-secondary { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); padding: 14px 32px; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+    .hero .badges { margin-top: 48px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .hero .badge { background: var(--bg-card); border: 1px solid var(--border); padding: 6px 16px; border-radius: 20px; font-size: 13px; color: var(--text-dim); }
+    .hero .badge .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .hero .badge .dot.green { background: var(--green); }
+    .hero .badge .dot.yellow { background: var(--yellow); }
+    section { max-width: 1100px; margin: 0 auto; padding: 80px 24px; }
+    section h2 { font-size: 36px; font-weight: 700; text-align: center; margin-bottom: 16px; }
+    section .subtitle { text-align: center; color: var(--text-dim); font-size: 18px; margin-bottom: 48px; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .feature-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; transition: border-color 0.2s; }
+    .feature-card:hover { border-color: var(--accent); }
+    .feature-card .icon { font-size: 32px; margin-bottom: 16px; }
+    .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { color: var(--text-dim); font-size: 15px; }
+    .code-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; max-width: 800px; margin: 0 auto; }
+    .code-header { background: #1c2128; padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .code-header .dots { display: flex; gap: 6px; }
+    .code-header .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .code-header .dot.r { background: #ff5f56; } .code-header .dot.y { background: #ffbd2e; } .code-header .dot.g { background: #27c93f; }
+    .code-header .filename { margin-left: 12px; color: var(--text-dim); font-size: 14px; font-family: monospace; }
+    .code-content { padding: 24px; font-family: 'Fira Code', monospace; font-size: 14px; line-height: 1.6; white-space: pre; overflow-x: auto; }
+    .code-content .kw { color: var(--purple); } .code-content .fn { color: var(--yellow); } .code-content .str { color: var(--green); } .code-content .num { color: var(--accent); } .code-content .comment { color: var(--text-dim); font-style: italic; }
+    .install { text-align: center; }
+    .install .cmd { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 20px 32px; font-family: monospace; font-size: 18px; display: inline-block; margin: 16px 0; }
+    .install .cmd .prompt { color: var(--green); }
+    .bench-table { max-width: 700px; margin: 0 auto; }
+    .bench-table table { width: 100%; border-collapse: collapse; }
+    .bench-table th, .bench-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+    .bench-table th { color: var(--text-dim); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+    .bench-table td { font-family: monospace; font-size: 14px; }
+    .bench-table .speedup { color: var(--green); font-weight: bold; }
+    footer { border-top: 1px solid var(--border); padding: 48px 24px; text-align: center; color: var(--text-dim); }
+    footer a { color: var(--text-dim); margin: 0 12px; }
+    @media (max-width: 768px) { .hero h1 { font-size: 36px; } nav .links { display: none; } }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="inner">
+      <a href="/" class="logo">⚡ AILang</a>
+      <div class="links">
+        <a href="#features">Features</a><a href="#install">Install</a><a href="#hello">Hello World</a>
+        <a href="/playground/">Playground</a><a href="#benchmarks">Benchmarks</a>
+      </div>
+      <a href="https://github.com/ailang/ailang-core" class="cta">GitHub</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <h1>Lenguaje de programación<br><span class="grad">con runtime cognitivo</span></h1>
+    <p>AILang combina la simplicidad de Python con la seguridad de Rust, el pipeline IR de LLVM, y un runtime cognitivo para IA — todo en un solo lenguaje.</p>
+    <div class="buttons">
+      <a href="#install" class="btn-primary">⚡ Get Started</a>
+      <a href="/playground/" class="btn-secondary">▶ Try Playground</a>
+    </div>
+    <div class="badges">
+      <span class="badge"><span class="dot green"></span>258 tests</span>
+      <span class="badge"><span class="dot green"></span>37/37 FASE 47</span>
+      <span class="badge"><span class="dot green"></span>5 backends</span>
+      <span class="badge"><span class="dot yellow"></span>15 stdlib modules</span>
+      <span class="badge"><span class="dot green"></span>v1.1.0</span>
+    </div>
+  </div>
+
+  <section id="features">
+    <h2>¿Por qué AILang?</h2>
+    <p class="subtitle">No es solo otro lenguaje. Es un runtime cognitivo completo con tooling profesional.</p>
+    <div class="features">
+      <div class="feature-card"><div class="icon">🔒</div><h3>Capability Enforcement</h3><p><code>--allow filesystem.read --allow ai.query</code>. Todo no autorizado es DENIED por defecto.</p></div>
+      <div class="feature-card"><div class="icon">🧠</div><h3>Runtime Cognitivo</h3><p><code>brain.ingest()</code>, <code>brain.query()</code>, <code>brain.think()</code> con búsqueda lexical + vectorial + graph.</p></div>
+      <div class="feature-card"><div class="icon">⚡</div><h3>5 Backends</h3><p>Interpreter, VM (1.5-2.3x faster), AIR, LLVM JIT, WASM. Multi-backend selection automática.</p></div>
+      <div class="feature-card"><div class="icon">📐</div><h3>Pipeline HIR/MIR/AIR</h3><p>AST → HIR → MIR (SSA + optimizaciones) → AIR (tipado con effects + capabilities). Como LLVM pero para AILang.</p></div>
+      <div class="feature-card"><div class="icon">🔧</div><h3>Tooling Completo</h3><p>LSP (14 métodos), DAP (step over/into/out), formatter, linter, profiler, package manager, fuzzer, benchmarks.</p></div>
+      <div class="feature-card"><div class="icon">🧪</div><h3>Tensor + Crypto</h3><p>Tensor con autograd (matmul, softmax, relu), crypto API (Ed25519, AES-256-GCM, SHA-256, HKDF, Fernet).</p></div>
+      <div class="feature-card"><div class="icon">🎯</div><h3>Type System Gradual</h3><p>Types opcionales con inference, narrowing, y generics (<code>List[int]</code>, <code>Dict[string, int]</code>).</p></div>
+      <div class="feature-card"><div class="icon">📦</div><h3>Package Manager</h3><p><code>ailang pkg init/install/publish/search</code> con .ailpkg (tar.gz + SHA-256 + Ed25519 signing).</p></div>
+      <div class="feature-card"><div class="icon">🌐</div><h3>CI Multiplataforma</h3><p>GitHub Actions: 3 OS × 3 Python = 9 jobs. Fuzzing + property-based testing en CI.</p></div>
+    </div>
+  </section>
+
+  <section id="install" class="install">
+    <h2>Instalación</h2>
+    <p class="subtitle">Empieza en 30 segundos</p>
+    <div class="cmd"><span class="prompt">$</span> pip install ailang-core</div>
+    <p style="color: var(--text-dim); font-size: 14px; margin-top: 8px;">Requiere Python 3.10+. Opcional: cryptography, psycopg-pool, llvmlite, hypothesis</p>
+    <div style="margin-top: 24px;">
+      <div class="cmd" style="font-size: 14px;"><span class="prompt">$</span> python -m ailang doctor <span style="color: var(--text-dim)"># verifica instalación</span></div>
+    </div>
+  </section>
+
+  <section id="hello">
+    <h2>Hello World</h2>
+    <p class="subtitle">Sintaxis familiar, poder expressivo</p>
+    <div class="code-section">
+      <div class="code-header"><div class="dots"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div><span class="filename">hello.ailang</span></div>
+      <div class="code-content"><span class="comment">// Variables con type inference</span>
+<span class="kw">let</span> name = <span class="str">"Ada"</span>
+<span class="kw">let</span> age = <span class="num">30</span>
+
+<span class="comment">// Funciones con closures mutables</span>
+<span class="kw">fn</span> <span class="fn">make_counter</span>() {
+  <span class="kw">let</span> count = <span class="num">0</span>
+  <span class="kw">fn</span> <span class="fn">inc</span>() {
+    count = count + <span class="num">1</span>
+    <span class="kw">return</span> count
+  }
+  <span class="kw">return</span> inc
+}
+
+<span class="comment">// Clases con herencia</span>
+<span class="kw">class</span> Animal {
+  <span class="kw">fn</span> <span class="fn">init</span>(name) { self.name = name }
+  <span class="kw">fn</span> <span class="fn">speak</span>() { <span class="kw">return</span> <span class="str">"generic"</span> }
+}
+<span class="kw">class</span> Dog <span class="kw">extends</span> Animal {
+  <span class="kw">fn</span> <span class="fn">speak</span>() { <span class="kw">return</span> <span class="str">"woof"</span> }
+}
+
+<span class="comment">// Ejecutar</span>
+<span class="kw">let</span> counter = make_counter()
+<span class="fn">print</span>(counter())  <span class="comment">// 1</span>
+<span class="fn">print</span>(counter())  <span class="comment">// 2</span>
+<span class="fn">print</span>(Dog(<span class="str">"Rex"</span>).speak())  <span class="comment">// woof</span>
+
+<span class="comment">// String interpolation</span>
+<span class="fn">print</span>(<span class="str">"Hello ${name}, age ${age}"</span>)</div>
+    </div>
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="/playground/" class="btn-primary">▶ Try in Playground</a>
+    </div>
+  </section>
+
+  <section id="benchmarks">
+    <h2>Performance</h2>
+    <p class="subtitle">VM es 1.5-2.3x más rápida que el Interpreter</p>
+    <div class="bench-table">
+      <table>
+        <thead><tr><th>Benchmark</th><th>Interp (ms)</th><th>VM (ms)</th><th>Speedup</th></tr></thead>
+        <tbody>
+          <tr><td>arith_sum_1k</td><td>7.9</td><td>4.5</td><td class="speedup">1.76x</td></tr>
+          <tr><td>fib_recursive_10</td><td>2.8</td><td>1.3</td><td class="speedup">2.12x</td></tr>
+          <tr><td>fn_call_500</td><td>7.8</td><td>3.9</td><td class="speedup">2.01x</td></tr>
+          <tr><td>closures_counter</td><td>1.8</td><td>0.9</td><td class="speedup">1.91x</td></tr>
+          <tr><td>exceptions_50</td><td>0.8</td><td>0.4</td><td class="speedup">1.99x</td></tr>
+          <tr><td>channel_50</td><td>1.2</td><td>0.5</td><td class="speedup">2.31x</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="text-align: center; color: var(--text-dim); font-size: 14px; margin-top: 16px;">VM faster en 14/17 casos. Ejecuta: <code>python -m ailang bench</code></p>
+  </section>
+
+  <section>
+    <h2>Quick Start</h2>
+    <p class="subtitle">De cero a running en 60 segundos</p>
+    <div class="code-section" style="max-width: 700px;">
+      <div class="code-header"><div class="dots"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div><span class="filename">terminal</span></div>
+      <div class="code-content"><span class="comment"># Instalar</span>
+<span style="color: var(--green);">$</span> pip install ailang-core
+
+<span class="comment"># Crear proyecto</span>
+<span style="color: var(--green);">$</span> python -m ailang new app myapp
+<span style="color: var(--accent)">✅ Created app project: myapp</span>
+
+<span class="comment"># Ejecutar</span>
+<span style="color: var(--green);">$</span> cd myapp && python -m ailang main.ailang
+<span style="color: var(--green)">Hello from myapp!</span>
+
+<span class="comment"># Playground web</span>
+<span style="color: var(--green);">$</span> python -m ailang --serve
+<span style="color: var(--accent)">⚡ AILang Playground — http://localhost:8080</span></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>AILang v1.1.0 — Open Source (MIT License)</p>
+    <div style="margin-top: 16px;">
+      <a href="https://github.com/ailang/ailang-core">GitHub</a>
+      <a href="/docs/TUTORIAL.md">Tutorial</a>
+      <a href="/playground/">Playground</a>
+      <a href="/CHANGELOG.md">Changelog</a>
+    </div>
+    <p style="margin-top: 16px; font-size: 13px;">Built by Enrique Jimenez García</p>
+  </footer>
+</body>
+</html>

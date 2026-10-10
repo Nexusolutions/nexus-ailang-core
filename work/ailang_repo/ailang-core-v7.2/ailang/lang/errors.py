@@ -1,4 +1,4 @@
-"""Jerarquía completa de errores de AILang (P3-6).
+"""Jerarquía completa de errores de AILang (P3-6 + Y3).
 
 FASE 7 del prompt maestro:
 
@@ -20,32 +20,18 @@ FASE 7 del prompt maestro:
   ├── IOError
   └── ConcurrencyError
 
-Cada error incluye:
-- código (e.g., E001, E042)
-- archivo (path o <stdin>)
-- línea
-- columna
-- fragmento de código fuente
-- indicador visual (caret)
-- mensaje
-- causa (opcional)
-- sugerencia de solución (opcional)
-
-Formato de visualización estilo Rust:
-
-  error[E042]: cannot assign String to variable 'age'
-    --> prog.ailang:12:7
-     |
-  12 | age = "Enrique"
-     |       ^^^^^^^^^
-     |
-  expected: Int
-  found:    String
+Y3: Mejoras de UX:
+- Colores ANSI cuando stdout es terminal
+- "Did you mean...?" suggestions via Levenshtein distance
+- Error codes con URL a documentación
 """
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass, field
 from typing import List, Optional
+from difflib import get_close_matches
 
 
 @dataclass
@@ -98,42 +84,66 @@ class AILangError(Exception):
         return self
 
     def format(self) -> str:
-        # Header estilo Rust
-        out = [f"error[{self.code}]: {self.message}"]
+        """Formatea el error con colores ANSI si stdout es terminal."""
+        use_color = _is_terminal()
+        return self._format(use_color)
+
+    def _format(self, use_color: bool = False) -> str:
+        # Colors
+        if use_color:
+            RED = "\033[91m"
+            BOLD = "\033[1m"
+            DIM = "\033[2m"
+            CYAN = "\033[96m"
+            YELLOW = "\033[93m"
+            GREEN = "\033[92m"
+            RESET = "\033[0m"
+        else:
+            RED = BOLD = DIM = CYAN = YELLOW = GREEN = RESET = ""
+
+        # Header
+        out = [f"{RED}{BOLD}error[{self.code}]{RESET}: {self.message}"]
+
+        # Location
         if self.line > 0 or self.file != "<stdin>":
             loc = f"{self.file}:{self.line}:{self.col}" if self.col else f"{self.file}:{self.line}"
-            out.append(f"  --> {loc}")
-        # Source snippet con caret indicator
+            out.append(f"  {DIM}--> {loc}{RESET}")
+
+        # Source snippet con caret
         if self.source_snippet and self.line > 0:
             lines = self.source_snippet.splitlines()
-            out.append("   |")
-            # Línea antes del error
+            out.append(f"   {DIM}|{RESET}")
             if 0 < self.line - 1 <= len(lines):
-                out.append(f"{self.line - 1:3d} | {lines[self.line - 2]}")
-            # Línea del error
+                out.append(f"{self.line - 1:3d} {DIM}|{RESET} {lines[self.line - 2]}")
             if 0 < self.line <= len(lines):
-                out.append(f"{self.line:3d} | {lines[self.line - 1]}")
-                # Caret indicator
+                out.append(f"{YELLOW}{self.line:3d}{RESET} {DIM}|{RESET} {lines[self.line - 1]}")
                 caret_col = max(0, self.col - 1)
                 caret_len = 1
-                caret_line = " " * (len(str(self.line)) + 4 + caret_col) + "^" + "~" * max(0, caret_len - 1)
-                out.append(f"   | {caret_line}")
-            # Línea después del error
+                caret = " " * (len(str(self.line)) + 4 + caret_col) + f"{RED}{'^' + '~' * max(0, caret_len - 1)}{RESET}"
+                out.append(f"   {DIM}|{RESET} {caret}")
             if 0 < self.line + 1 <= len(lines):
-                out.append(f"{self.line + 1:3d} | {lines[self.line]}")
-            out.append("   |")
+                out.append(f"{self.line + 1:3d} {DIM}|{RESET} {lines[self.line]}")
+            out.append(f"   {DIM}|{RESET}")
+
         # Cause
         if self.cause:
-            out.append(f"cause: {self.cause}")
-        # Suggestion
+            out.append(f"{CYAN}note:{RESET} {self.cause}")
+
+        # Suggestion (Y3: did-you-mean)
         if self.suggestion:
-            out.append(f"help: {self.suggestion}")
-        # Stack trace si hay frames
+            out.append(f"{GREEN}help:{RESET} {self.suggestion}")
+
+        # Stack trace
         if self.frames:
             out.append("")
-            out.append("Traceback (AILang stack):")
+            out.append(f"{DIM}Traceback (AILang stack):{RESET}")
             for fr in reversed(self.frames):
                 out.append(fr.format())
+
+        # Y3: Error code URL
+        if use_color:
+            out.append(f"\n{DIM}For more information: https://docs.ailang.org/errors/{self.code}{RESET}")
+
         return "\n".join(out)
 
 
@@ -260,3 +270,48 @@ def render_error(
         source_snippet=source, cause=cause, suggestion=suggestion,
     )
     return err.format()
+
+
+# --- Y3: Helpers de "did you mean" ---
+
+def did_you_mean(name: str, candidates: List[str], n: int = 3) -> Optional[str]:
+    """Retorna una sugerencia 'did you mean X?' si hay un match cercano.
+
+    Usa difflib.get_close_matches para encontrar el nombre más parecido.
+
+    Args:
+        name: el nombre que el usuario escribió (posiblemente incorrecto)
+        candidates: lista de nombres válidos (variables, funciones, keywords, etc.)
+        n: número máximo de sugerencias
+
+    Returns:
+        String con sugerencia formateada, o None si no hay match.
+    """
+    matches = get_close_matches(name, candidates, n=n, cutoff=0.6)
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return f"did you mean '{matches[0]}'?"
+    return f"did you mean one of: {', '.join(f'{m!r}' for m in matches)}?"
+
+
+def suggest_keyword(name: str) -> Optional[str]:
+    """Sugiere un keyword de AILang si el usuario escribió algo parecido."""
+    keywords = [
+        "let", "const", "fn", "if", "else", "while", "for", "in", "return",
+        "class", "extends", "import", "try", "catch", "throw", "as",
+        "self", "super", "break", "continue", "match", "case",
+        "enum", "async", "await", "yield", "interface", "record", "spawn",
+        "implements", "purge_after", "and", "or", "not",
+    ]
+    return did_you_mean(name, keywords)
+
+
+def suggest_name(name: str, known_names: List[str]) -> Optional[str]:
+    """Sugiere un nombre de variable/función si el usuario escribió algo parecido."""
+    return did_you_mean(name, known_names)
+
+
+def _is_terminal() -> bool:
+    """Detecta si stdout es un terminal (para activar colores ANSI)."""
+    return hasattr(sys.stderr, 'isatty') and sys.stderr.isatty()

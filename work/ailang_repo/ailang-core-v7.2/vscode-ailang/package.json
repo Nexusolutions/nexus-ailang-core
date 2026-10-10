@@ -1,0 +1,193 @@
+{
+  "name": "ailang",
+  "displayName": "AILang",
+  "description": "Language support for AILang — lenguaje de programación con runtime cognitivo",
+  "version": "1.1.0",
+  "publisher": "ailang",
+  "license": "MIT",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages", "Debuggers", "Formatters"],
+  "icon": "images/icon.png",
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:ailang",
+    "onCommand:ailang.runFile",
+    "onCommand:ailang.checkFile",
+    "onCommand:ailang.formatFile",
+    "onCommand:ailang.doctor"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "ailang",
+        "aliases": ["AILang", "ailang"],
+        "extensions": [".ailang", ".ail"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ailang",
+        "scopeName": "source.ailang",
+        "path": "./syntaxes/ailang.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ailang.runFile",
+        "title": "AILang: Run File",
+        "icon": "$(play)"
+      },
+      {
+        "command": "ailang.runFileVM",
+        "title": "AILang: Run File (VM)"
+      },
+      {
+        "command": "ailang.runFileAIR",
+        "title": "AILang: Run File (AIR + Capabilities)"
+      },
+      {
+        "command": "ailang.checkFile",
+        "title": "AILang: Check (Analysis)"
+      },
+      {
+        "command": "ailang.formatFile",
+        "title": "AILang: Format File"
+      },
+      {
+        "command": "ailang.doctor",
+        "title": "AILang: Doctor"
+      },
+      {
+        "command": "ailang.newProject",
+        "title": "AILang: New Project"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "ailang.runFile",
+          "when": "resourceLangId == ailang",
+          "group": "ailang@1"
+        },
+        {
+          "command": "ailang.checkFile",
+          "when": "resourceLangId == ailang",
+          "group": "ailang@2"
+        },
+        {
+          "command": "ailang.formatFile",
+          "when": "resourceLangId == ailang",
+          "group": "ailang@3"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "ailang.runFile",
+          "when": "resourceLangId == ailang",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AILang",
+      "properties": {
+        "ailang.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to Python interpreter that has ailang installed"
+        },
+        "ailang.lspEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Language Server Protocol (completion, hover, diagnostics)"
+        },
+        "ailang.dapEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Debug Adapter Protocol (breakpoints, stepping)"
+        },
+        "ailang.formatOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Format .ailang files on save using ailang fmt"
+        },
+        "ailang.defaultBackend": {
+          "type": "string",
+          "enum": ["interp", "vm", "air"],
+          "default": "vm",
+          "description": "Default backend for Run commands"
+        },
+        "ailang.capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Capabilities to grant when running (--allow flags)"
+        }
+      }
+    },
+    "breakpoints": [
+      { "language": "ailang" }
+    ],
+    "debuggers": [
+      {
+        "type": "ailang",
+        "label": "AILang Debugger",
+        "program": "python3",
+        "args": ["-m", "ailang", "--dap"],
+        "configurationAttributes": {
+          "launch": {
+            "required": ["program"],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Path to .ailang file to debug"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": false,
+                "description": "Stop on entry"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "ailang",
+            "request": "launch",
+            "name": "AILang: Debug",
+            "program": "${file}"
+          }
+        ]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "ailang",
+        "path": "./snippets/ailang.json"
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "ailang",
+        "required": ["command"],
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "ailang subcommand to run"
+          },
+          "file": {
+            "type": "string",
+            "description": "File to run the command on"
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "echo 'AILang VS Code extension ready'"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0"
+  }
+}
