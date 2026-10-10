@@ -1,2 +1,10 @@
 skills/
 node_modules/
+
+# Non-project directories
+download/
+scripts/
+tool-results/
+upload/
+work/
+.env
