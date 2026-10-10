@@ -37,22 +37,29 @@ Historial:
            idempotente, linter con reglas E001/W001/W002/W003/W005, ailang
            doctor), P3 (jerarquía AILangError completa, effect checker,
            capability enforcement con --allow/--deny CLI, pipeline HIR/MIR/AIR).
+  5.4.0  — P3-9b (capability enforcement integrado en stdlib: io/path/http/
+           brain/sys/time llaman a require() antes de operar), P3-1b (HIR/MIR/AIR
+           integrado con effect inference + capability mapping + ailang check
+           command), P2-10 (property-based testing con hypothesis: 13 properties
+           de aritmética/closures/parser/formatter), P2-13 (CI multiplataforma
+           GitHub Actions matrix 3 OS × 3 Python versions), P2-14 (benchmark
+           suite reproducible con 17 casos + output tabular + save a JSON).
 """
 from __future__ import annotations
 
 # --- Versión agregada del paquete -------------------------------------------
 
-__version__: str = "5.3.0"
+__version__: str = "5.4.0"
 
 # --- 7 constantes separadas (FASE 1) ----------------------------------------
 
-LANGUAGE_VERSION: str = "5.3.0"
+LANGUAGE_VERSION: str = "5.4.0"
 """Versión semántica del lenguaje: léxico, gramática, AST, sistema de tipos,
 semántica de ejecución. Bump major ante breaking changes sintácticos.
 Bump minor ante nuevas features del lenguaje. Bump patch ante bugfixes semánticos.
 """
 
-RUNTIME_VERSION: str = "5.3.0"
+RUNTIME_VERSION: str = "5.4.0"
 """Versión del runtime: interpreter + VM + bytecode_io + closures + scheduler.
 Independiente de LANGUAGE_VERSION porque el runtime puede evolucionar
 (se añade GC, se cambia el modelo de threads, etc.) sin tocar el lenguaje.
@@ -76,7 +83,7 @@ real (no hay backend nativo), pero la constante existe para cuando se
 implemente (FASE 31 - LLVM).
 """
 
-STDLIB_VERSION: str = "5.3.0"
+STDLIB_VERSION: str = "5.4.0"
 """Versión de la stdlib: io, math, strings, json, time, http, path, sys,
 random, listops, test_mod, re, brain. Bump cuando se añade/elimina un
 módulo o se cambia una API pública de stdlib.

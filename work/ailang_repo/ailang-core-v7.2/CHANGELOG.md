@@ -1,88 +1,95 @@
 # Changelog
 
+## 5.4.0 — P3-9b + P3-1b + P2-10 + P2-13 + P2-14
+
+### P3-9b — Capability enforcement integrado en stdlib
+- Stdlib modules ahora llaman `require()` antes de operar:
+  - `io.read_text`/`write_text`/`exists`/`lines` → `filesystem.read`/`filesystem.write`
+  - `http.get`/`post`/`json_get` → `network.http`
+  - `brain.ingest`/`query`/`think`/`graph` → `ai.query`
+  - `sys.argv`/`exit` → `process.spawn`; `sys.getenv` → `system.env`
+  - `path.exists`/`is_file`/`is_dir`/`listdir` → `filesystem.read`; `mkdir` → `filesystem.write`
+  - `time.sleep` → `process.spawn`
+- Default mode: permissive (modo legacy, todas concedidas). Restrictive con `--allow` explícito.
+- Verificado end-to-end: programa con `io.read_text` falla sin `--allow filesystem.read`,
+  funciona con `--allow filesystem.read`, y respeta wildcards `--allow filesystem.*`.
+- Audit log captura cada operation allowed/denied con op_desc.
+
+### P3-1b — HIR/MIR/AIR integrado con runtime
+- `ailang/ir/pipeline.py` ahora integra effect inference (P3-8) y capability mapping (P3-9):
+  - `compile_to_air(source)` propaga effects → capabilities en cada AIRFunction.
+- `ailang/runtime/air_runtime.py`: API `analyze_source(source)` y
+  `run_with_air_verification(source, use_vm=, ctx=)`.
+- CLI `ailang check <file.ailang>`: reporta capabilities y effects requeridos sin ejecutar.
+- Fix effect checker: `_walk_expr_for_effects` visita Return/Let/Const/Assign/ExprStmt.value
+  para detectar llamadas a `module.function()` en expresiones.
+
+### P2-10 — Property-based testing con hypothesis
+- `tests/test_property_based.py` con 13 properties:
+  - Lexer nunca crashea con input arbitrario
+  - Parser maneja literales enteros
+  - Aritmética conmutativa (a+b == b+a) interp == VM
+  - Aritmética asociativa ((a+b)+c == a+(b+c))
+  - Distributividad (a*(b+c) == a*b+a*c)
+  - Identidades aditiva (a+0 == a) y multiplicativa (a*1 == a)
+  - Doble negación (not not x == x)
+  - Formatter AST idempotente
+  - Paridad interp↔VM para aritmética
+  - Variables preservan valores
+  - Llamadas a función preservan args
+  - If/else selecciona branch correcta
+- Suite total: 162 tests (149 + 13 property-based).
+
+### P2-13 — CI multiplataforma (GitHub Actions)
+- `.github/workflows/ci.yml` con 3 jobs:
+  - `test`: matrix 3 OS (Ubuntu/Windows/macOS) × 3 Python versions (3.11/3.12/3.13)
+    = 9 combinaciones. Ejecuta pytest + monolith embedded tests + examples smoke.
+  - `lint`: self-lint con ailang linter + format_ast idempotency check.
+  - `conformance`: conformance suite + property-based tests.
+
+### P2-14 — Benchmarks reproducibles
+- `ailang/bench.py` reescrito con 17 casos cubriendo FASE 30:
+  aritmética, loops anidados, recursion (fib), closures, classes dispatch, strings,
+  lists, dicts, exceptions, modules, JSON round-trip, generators, interpolation, channels.
+- `run_bench(rounds=N, cases=[...])` retorna dict con metadata + results + summary.
+- CLI `ailang bench [--rounds=N] [--save] [--cases ...]` con output tabular:
+  ```
+  Case              Interp (ms)   VM (ms)   Speedup
+  arith_sum_1k         7.909      4.487     1.76x
+  ```
+- `ailang bench --save` persiste a `benchmarks/results/bench-<timestamp>.json`.
+- Resultados: VM más rápida que interp en 15/17 casos (avg 1.5-2x speedup).
+
+### Métricas
+- Tests `pytest tests/`: 162/162 ✅ (149 + 13 property-based).
+- Tests embebidos monolito: 44/44 ✅.
+- `ailang doctor`: 11/11 componentes OK.
+- Benchmarks: 17 casos reproducibles, VM faster en 15/17.
+
 ## 5.3.0 — P1 + P2 + P3 (arquitectura, tooling, IR pipeline)
 
 ### P1 — Partitionar monolito y eliminar frontend duplicado
-- **P1-1**: Creado `ailang/cognitive/` paquete como fachada normativa del runtime cognitivo.
-  `ailang.cognitive.{CognitiveBrainEngine, CognitiveBrainStore, HybridRetriever, ...}` se re-exporta
-  perezosamente desde `ailang_core.py` vía `__getattr__`. El paquete modular `ailang/` ya no importa
-  `ailang_core` directamente en `brain.py` ni en `runtime_bridge.py`.
-- **P1-3 + P1-4**: Eliminado `ailang/compiler/` (frontend duplicado v7.1 legacy). Migrado físicamente
-  a `ailang/cognitive/dsl/` con imports internos actualizados. Símbolo canónico renombrado
-  `compile_source` → `compile_cognitive` (evita colisión con `ailang.lang.vm.compile_source`).
-  Alias deprecated con `DeprecationWarning` para retrocompatibilidad.
-- **P1-5**: Tests embebidos del monolito (44 tests, ~465 LOC) migrados a
-  `tests/test_ailang_core.py`. pytest los descubre automáticamente.
+- P1-1: `ailang/cognitive/` fachada, `ailang/cognitive/dsl/` migrado desde `ailang/compiler/`.
+- P1-3 + P1-4: Eliminado `ailang/compiler/`, renombrado `compile_source` → `compile_cognitive`.
+- P1-5: Tests embebidos migrados a `tests/test_ailang_core.py`.
 
 ### P2 — Tooling profesional
-- **P2-1** LSP ampliado: añadidos `references`, `rename`, `documentSymbol`, `semanticTokens/full`,
-  `signatureHelp`, `codeAction`. Capabilities declaradas en `initialize` response. Helpers:
-  `_extract_symbols`, `_extract_semantic_tokens` (tokenizer con 9 token types + modifiers),
-  `_signature_help` (encuentra `(` más cercano y resuelve firma).
-- **P2-4** Formatter AST-based idempotente: `format_ast(source)` parsea → emite desde AST.
-  Verificado idempotente: `format_ast(format_ast(x)) == format_ast(x)`. NO preserva comentarios
-  (los comentarios no están en el AST); para preservarlos usar `format_source` (token-based).
-- **P2-5** Linter con reglas:
-  - E001: unused variables (asignadas pero nunca leídas, excluyendo `_foo`)
-  - E002: unused imports
-  - W001: shadowing (variable que oculta otra del scope externo)
-  - W002: unreachable code (statements después de return/break/continue)
-  - W003: missing return (fn no-void sin return en todos los paths)
-  - W005: empty blocks (if/while/fn sin body)
-- **P2-15** `ailang doctor`: diagnostica 11 componentes (runtime, VM, compiler, bytecode_io,
-  stdlib, database, LSP, debugger, hardware, cognitive, dependencies). Reporta versiones
-  (package/language/runtime/bytecode/IR) y estado de cada componente.
+- P2-1: LSP ampliado (references/rename/documentSymbol/semanticTokens/signatureHelp/codeAction).
+- P2-4: Formatter AST idempotente (`format_ast`).
+- P2-5: Linter con reglas (E001/W001/W002/W003/W005).
+- P2-15: `ailang doctor` diagnostica 11 componentes.
 
 ### P3 — Diagnostics, effects, capabilities, IR pipeline
-- **P3-6** Jerarquía `AILangError` completa (FASE 7): AILangError + 16 subclases (LexError,
-  SyntaxError, ParseError, TypeError, NameError, ImportError, RuntimeError, ValueError,
-  IndexError, AttributeError, SecurityError, CapabilityError, TimeoutError, MemoryError,
-  IOError, ConcurrencyError). Cada error incluye code/file/line/col/source_snippet/cause/
-  suggestion. Formato visual estilo Rust con caret indicator.
-- **P3-8** Effect checker (`ailang/semantic/effects.py`): inferencia de effects (pure/io/
-  filesystem/network/ai/hardware/process/unsafe) para cada función. Tabla de effects por
-  builtin y por módulo stdlib. `check_source(source)` retorna issues E110 (pure fn calling
-  impure) y W110 (effect set incompleto).
-- **P3-9** Capability enforcement en runtime (`ailang/runtime/capabilities.py`):
-  `CapabilityContext` con allow/deny lists, audit log, wildcards (`filesystem.*`).
-  CLI flags `--allow <cap>` y `--deny <cap>`. Default: permissive (modo legacy);
-  explícito restrictive cuando se pasa `--allow`. 11 capabilities conocidas:
-  filesystem.read/write, network.http, process.spawn, ai.query, hardware.gpu/npu/tpu,
-  database.read/write, system.env.
-- **P3-1** Pipeline HIR/MIR/AIR (FASE 9, esqueleto):
-  - `ailang/ir/hir.py`: HIR (AST tipado con HIRType, HIRValue, HIRInstruction, HIRFunction,
-    HIRModule). Lowering AST→HIR con `lower_ast_to_hir(program)`.
-  - `ailang/ir/mir.py`: MIR (SSA-lite con MIRVar versionada, MIRBlock con CFG, MIRFunction).
-    Lowering HIR→MIR con `lower_hir_to_mir(hir_fn)`. Optimizaciones: `constant_fold`,
-    `dead_code_elimination`.
-  - `ailang/ir/air.py`: AIR (instrucciones tipadas con effects, capabilities, source_location).
-    Lowering MIR→AIR con `lower_mir_to_air(mir_fn, hir_fn)`. Pretty printer
-    `format_air_function(fn)`.
-  - `ailang/ir/pipeline.py`: API unificada `compile_to_air(source)` y
-    `compile_source_to_text(source)`.
-
-### Métricas
-- Tests `pytest tests/`: 149/149 ✅ (109 originales + 25 conformance VM parity + 15 ailang_core).
-- Tests embebidos monolito: 44/44 ✅.
-- `ailang doctor`: 11/11 componentes OK.
-- Pipeline HIR/MIR/AIR: funcional end-to-end (AST→HIR→MIR→AIR con optimizaciones).
-- Limitaciones conocidas: efecto fixpoint para recursión mutua (TODO), capability enforcement
-  aún no integrado en stdlib calls (siguiente iteración).
+- P3-6: Jerarquía `AILangError` completa (16 subclases + formato Rust-style).
+- P3-8: Effect checker en `ailang/semantic/effects.py`.
+- P3-9: Capability enforcement con CLI `--allow`/`--deny`.
+- P3-1: Pipeline HIR/MIR/AIR (esqueleto funcional end-to-end).
 
 ## 5.2.0 — FASE C (VM conformance)
 
-### P0-5 — Upvalues mutables (closures)
-- Implementadas `Cell` (contenedor mutable compartido) en `ailang/lang/vm.py`.
-- `MAKE_FUNCTION` ahora captura Cell refs en lugar de snapshotear valores.
-
-### P0-6 — Generadores (yield)
-- Implementado `GeneratorState` + `VMGenerator` para pausar/reanudar frames VM.
-
-### P0-7 — Enum / Interface / Record / InterpolatedString
-- `MAKE_ENUM`/`MAKE_RECORD`/`MAKE_INTERFACE`/`BUILD_STRING` opcodes.
-
-### P0-8 — Async / Await / Spawn / Channel
-- `VMScheduler` event loop cooperativo + `VMFuture` + `VMChannel`.
+### P0-5/P0-6/P0-7/P0-8
+- Cell upvalues (closures mutables), VMGenerator (yield), MAKE_ENUM/RECORD/INTERFACE/BUILD_STRING,
+  VMScheduler event loop + VMFuture + VMChannel.
 
 ## 5.1.0 — FASE 0 + FASE A + FASE B (auditoría y P0 quirúrgicos)
 

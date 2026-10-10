@@ -105,3 +105,25 @@ Stage Summary:
 - Nuevos módulos: ailang/cognitive/, ailang/cognitive/dsl/, ailang/semantic/, ailang/runtime/, ailang/ir/hir.py, mir.py, air.py, pipeline.py, ailang/doctor.py.
 - Eliminados: ailang/compiler/ (migrado a cognitive/dsl/).
 - Próximos pasos sugeridos: P4 (Native/LLVM, WASM, GPU/NPU/TPU reales, cryptography API) — son tareas experimentales post-1.0.
+
+---
+Task ID: EXEC-3
+Agent: Super Z (orchestrator)
+Task: Continuar con siguientes pasos: P3-9b (capability enforcement en stdlib), P3-1b (HIR/MIR/AIR integrado con runtime), P2-10 (property-based testing), P2-13 (CI multiplataforma), P2-14 (benchmarks reproducibles)
+
+Work Log:
+- P3-9b: Integré capability enforcement en 6 módulos stdlib (io, http, brain, sys, path, time). Cada función con efecto llama a require() antes de operar. Verificado end-to-end: io.read_text falla sin --allow filesystem.read, funciona con la capability, respeta wildcards filesystem.*, audit log captura allowed/denied.
+- P3-1b: Integré HIR/MIR/AIR con effect inference y capability mapping en pipeline.py. Creado ailang/runtime/air_runtime.py con analyze_source() y run_with_air_verification(). Añadido CLI `ailang check <file.ailang>` que reporta capabilities y effects sin ejecutar. Fix en effect checker: añadido _walk_expr_for_effects para visitar Return/Let/Const/Assign/ExprStmt.value y detectar module.function() calls en expresiones.
+- P2-10: Creado tests/test_property_based.py con 13 properties (lexer, parser, aritmética conmutativa/asociativa/distributiva, identidades, doble negación, formatter idempotencia, paridad interp↔VM, variables, fn calls, if/else). Instalé hypothesis en el venv correcto.
+- P2-13: Creado .github/workflows/ci.yml con 3 jobs: test (matrix 3 OS × 3 Python = 9 combinaciones), lint (self-lint + format_ast idempotency), conformance (conformance suite + property-based tests).
+- P2-14: Reescribí ailang/bench.py con 17 casos (aritmética, loops, recursion fib, closures, classes dispatch, strings, lists, dicts, exceptions, modules, JSON, generators, interpolation, channels). Output tabular con speedup. CLI `ailang bench [--rounds=N] [--save] [--cases ...]`. Save a benchmarks/results/bench-<timestamp>.json. Resultados: VM faster en 15/17 casos (1.5-2x speedup).
+- Versión bumped a 5.4.0. CHANGELOG y README actualizados.
+
+Stage Summary:
+- Tests totales: 162 pytest + 44 embebidos = 206. 100% verde.
+- ailang doctor: 11/11 componentes OK.
+- Benchmarks: 17 casos reproducibles. VM faster en 15/17 (avg 1.5-2x speedup).
+- Capability enforcement: verificado end-to-end en stdlib. Audit log funcional.
+- Pipeline HIR/MIR/AIR: integrado con effect inference y capability mapping.
+- CI: 9 combinaciones OS×Python listas para GitHub Actions.
+- Próximos pasos sugeridos: P4 (Native/LLVM, WASM, GPU/NPU/TPU reales, cryptography API) — son tareas experimentales post-1.0.

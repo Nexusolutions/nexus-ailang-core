@@ -46,8 +46,13 @@ implements(D(), S)
         self.assertIn("add", md)
 
     def test_bench(self):
+        # P2-14: run_bench ahora retorna {metadata, results, summary}
         r = run_bench(rounds=1)
-        self.assertIn("arith", r)
+        self.assertIn("results", r)
+        self.assertIn("summary", r)
+        # Al menos un caso "arith" debe existir
+        arith_cases = [k for k in r["results"] if k.startswith("arith")]
+        self.assertTrue(arith_cases, f"no arith case in {list(r['results'].keys())}")
 
 
 if __name__ == "__main__":

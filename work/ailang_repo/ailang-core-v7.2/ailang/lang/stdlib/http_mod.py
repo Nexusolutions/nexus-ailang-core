@@ -1,11 +1,18 @@
-"""Cliente HTTP mínimo (urllib)."""
+"""Stdlib `http` — cliente HTTP con capability enforcement (P3-9b).
+
+Cada operación requiere `network.http` capability.
+"""
 from __future__ import annotations
 import json as _json
 import urllib.request
 import urllib.error
 
+from ailang.runtime.capabilities import require
+
 
 def get(url, headers=None, timeout=30):
+    """HTTP GET. Requiere capability `network.http`."""
+    require("network.http", op_desc=f"http.get({url!r})")
     req = urllib.request.Request(str(url), headers=dict(headers or {}), method="GET")
     try:
         with urllib.request.urlopen(req, timeout=float(timeout)) as resp:
@@ -18,6 +25,8 @@ def get(url, headers=None, timeout=30):
 
 
 def post(url, data=None, headers=None, timeout=30):
+    """HTTP POST. Requiere capability `network.http`."""
+    require("network.http", op_desc=f"http.post({url!r}, ...)")
     h = dict(headers or {})
     payload = None
     if data is not None:
@@ -38,6 +47,8 @@ def post(url, data=None, headers=None, timeout=30):
 
 
 def json_get(url, **kw):
+    """HTTP GET + parse JSON. Requiere capability `network.http`."""
+    require("network.http", op_desc=f"http.json_get({url!r})")
     r = get(url, **kw)
     try:
         r["json"] = _json.loads(r.get("body") or "null")

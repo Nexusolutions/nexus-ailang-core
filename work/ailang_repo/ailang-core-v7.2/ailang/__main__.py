@@ -16,6 +16,18 @@ def main(argv=None):
     if raw and raw[0] == "doctor":
         from ailang.doctor import run_doctor
         return run_doctor()
+    if raw and raw[0] == "check":
+        # P3-1b: análisis sin ejecución. Reporta capabilities y effects requeridos.
+        from ailang.runtime.air_runtime import analyze_source
+        import json as _json
+        from pathlib import Path as P
+        if len(raw) < 2:
+            print("Uso: ailang check <file.ailang>", file=sys.stderr)
+            return 1
+        src = P(raw[1]).read_text(encoding="utf-8")
+        info = analyze_source(src)
+        print(_json.dumps(info, indent=2, default=str))
+        return 0
     if raw and raw[0] == "pkg":
         from ailang.pkg import main as pkg_main
         return pkg_main(raw[1:])
@@ -79,9 +91,25 @@ def main(argv=None):
         return 0
 
     if raw and raw[0] == "bench":
-        from ailang.bench import run_bench
-        import json
-        print(json.dumps(run_bench(), indent=2))
+        from ailang.bench import run_bench, print_summary, save_results
+        # P2-14: benchmarks reproducibles con output tabular + opcional save
+        rounds = 5
+        cases = None
+        save = False
+        for arg in raw[1:]:
+            if arg.startswith("--rounds="):
+                rounds = int(arg.split("=", 1)[1])
+            elif arg == "--save":
+                save = True
+            else:
+                if cases is None:
+                    cases = []
+                cases.append(arg)
+        results = run_bench(rounds=rounds, cases=cases)
+        print_summary(results)
+        if save:
+            path = save_results(results)
+            print(f"\nResults saved to: {path}")
         return 0
     if raw and raw[0] == "docgen":
         from ailang.docgen import docgen_file

@@ -84,12 +84,49 @@ def infer_effects(program: A.Program) -> Dict[str, Set[str]]:
                 _infer_call_effects(node, effects, known_fns)
             if isinstance(node, A.Spawn):
                 effects.add("process")
+            # Visitar value de Return/Let/Const/Assign/ExprStmt
+            if isinstance(node, (A.Return, A.Let, A.Const, A.Assign, A.ExprStmt)):
+                if hasattr(node, "value") and node.value is not None:
+                    _walk_expr_for_effects(node.value, effects, known_fns)
             if hasattr(node, "body") and isinstance(node.body, list):
                 _walk_for_effects(node.body, effects, known_fns)
             if isinstance(node, A.If):
                 _walk_for_effects(node.orelse, effects, known_fns)
             if isinstance(node, A.Try):
                 _walk_for_effects(node.catch_body, effects, known_fns)
+
+    def _walk_expr_for_effects(expr: Any, effects: Set[str],
+                                known_fns: Dict[str, Set[str]]) -> None:
+        """Recorre expresiones buscando llamadas a functions/builtins con effects."""
+        if isinstance(expr, A.Call):
+            _infer_call_effects(expr, effects, known_fns)
+            # Visitar args recursivamente (puede haber calls anidadas)
+            for arg in expr.args:
+                _walk_expr_for_effects(arg, effects, known_fns)
+        elif isinstance(expr, A.BinOp):
+            _walk_expr_for_effects(expr.left, effects, known_fns)
+            _walk_expr_for_effects(expr.right, effects, known_fns)
+        elif isinstance(expr, A.UnaryOp):
+            _walk_expr_for_effects(expr.operand, effects, known_fns)
+        elif isinstance(expr, A.Attr):
+            _walk_expr_for_effects(expr.value, effects, known_fns)
+        elif isinstance(expr, A.Index):
+            _walk_expr_for_effects(expr.value, effects, known_fns)
+            _walk_expr_for_effects(expr.index, effects, known_fns)
+        elif isinstance(expr, A.ListLit):
+            for e in expr.elts:
+                _walk_expr_for_effects(e, effects, known_fns)
+        elif isinstance(expr, A.DictLit):
+            for k, v in zip(expr.keys, expr.values):
+                _walk_expr_for_effects(k, effects, known_fns)
+                _walk_expr_for_effects(v, effects, known_fns)
+        elif isinstance(expr, A.Await):
+            _walk_expr_for_effects(expr.value, effects, known_fns)
+            effects.add("process")
+        elif isinstance(expr, A.InterpolatedString):
+            for part in expr.parts:
+                if not isinstance(part, str):
+                    _walk_expr_for_effects(part, effects, known_fns)
 
     def _infer_call_effects(call: A.Call, effects: Set[str],
                              known_fns: Dict[str, Set[str]]) -> None:
@@ -100,11 +137,15 @@ def infer_effects(program: A.Program) -> Dict[str, Set[str]]:
             elif name in known_fns:
                 effects.update(known_fns[name])
         elif isinstance(call.func, A.Attr):
+            # module.function() o instance.method()
             if isinstance(call.func.value, A.Name):
                 mod_name = call.func.value.id
                 fn_name = call.func.attr
                 if mod_name in STD_MODULE_EFFECTS and fn_name in STD_MODULE_EFFECTS[mod_name]:
                     effects.update(STD_MODULE_EFFECTS[mod_name][fn_name])
+                # También: si el "mod_name" es en realidad una variable local
+                # que apunta a una fn (raro pero posible), no lo detectamos
+                # aquí; se cubre con la 2da pasada de propagación.
 
     for stmt in program.body:
         if isinstance(stmt, A.Function):
