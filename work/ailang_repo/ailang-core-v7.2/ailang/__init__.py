@@ -14,7 +14,7 @@ from ailang.versions import (
     STDLIB_VERSION,
     PACKAGE_FORMAT_VERSION,
 )
-__author__ = "Enrique Jimenez García"
+__author__ = "Enrique Jimenez Garcia"
 
 from ailang.lang.interpreter import Interpreter, run_source, create_repl
 from ailang.lang.typecheck import typecheck, TypeChecker

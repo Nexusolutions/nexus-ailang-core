@@ -8,7 +8,7 @@ cómo contribuir al proyecto.
 ```bash
 # Clone el repositorio
 git clone <repo-url>
-cd ailang-core
+cd Nexus AILang-Core
 
 # Instala en modo editable
 pip install -e .
@@ -99,4 +99,4 @@ Ver `ROADMAP.md` para el roadmap completo. Resumen:
 
 - Issues: GitHub Issues
 - Discusiones: GitHub Discussions
-- Email: Enrique Jimenez García
+- Email: Enrique Jimenez Garcia

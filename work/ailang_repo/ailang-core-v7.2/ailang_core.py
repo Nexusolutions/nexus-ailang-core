@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AILang-Core v7.0 - Runtime cognitivo + transporte TCP/Unix/IPv6 con TLS,
+Nexus AILang-Core v7.0 - Runtime cognitivo + transporte TCP/Unix/IPv6 con TLS,
 ACK, reintentos, cola persistente cifrada, dedup persistente, brain IR,
 retrieval híbrido y presupuesto de latencia.
 
@@ -114,7 +114,7 @@ __all__ = [
     "stable_msg_id", "parse_address",
 ]
 
-AUTHOR = "Enrique Jimenez García"
+AUTHOR = "Enrique Jimenez Garcia"
 # P0-1 (FASE 1): el monolito reporta la misma versión que el paquete modular.
 # Antes tenía __version__ = "2.0.0" discordante con ailang/__init__.py (5.0.0).
 try:
@@ -379,7 +379,7 @@ class CognitiveIR:
 
 
 class CognitiveCompiler:
-    """Compila la DSL cognitiva declarativa de AILang-Core.
+    """Compila la DSL cognitiva declarativa de Nexus AILang-Core.
 
     Sintaxis soportada (una instrucción por línea):
       brain.ingest source="repo" path="Projects/A.md" content="..."
@@ -2148,7 +2148,7 @@ class FakeClock(MutableClock):
 # =============================================================================
 # COGNITIVE BRAIN LAYER — integración inspirada en GBrain
 # =============================================================================
-# Esta capa adopta los conceptos útiles de GBrain sin acoplar AILang-Core a
+# Esta capa adopta los conceptos útiles de GBrain sin acoplar Nexus AILang-Core a
 # TypeScript/Bun ni copiar su implementación. El motor conserva su contrato
 # Python y usa SQLite como backend local; un adaptador futuro puede apuntar a
 # PostgreSQL/pgvector sin cambiar la API cognitiva.
@@ -2871,10 +2871,10 @@ BrainEngine = CognitiveBrainEngine
 # =============================================================================
 
 def _cli(argv: Optional[List[str]] = None) -> int:
-    """CLI de AILang-Core v7.0: outbox, brain, eval DSL y tests."""
+    """CLI de Nexus AILang-Core v7.0: outbox, brain, eval DSL y tests."""
     parser = argparse.ArgumentParser(
         prog="ailang_core",
-        description=f"AILang-Core {__version__} — runtime cognitivo + transporte fiable",
+        description=f"Nexus AILang-Core {__version__} — runtime cognitivo + transporte fiable",
     )
     sub = parser.add_subparsers(dest="command")
 
@@ -2958,7 +2958,7 @@ def _cli_dispatch(args: argparse.Namespace) -> int:
     cmd = args.command
 
     if cmd == "version":
-        print(f"AILang-Core {__version__}")
+        print(f"Nexus AILang-Core {__version__}")
         print(f"Author: {AUTHOR}")
         print(f"Bytecode magic: {MAGIC!r} format={FORMAT_VERSION}")
         return 0
@@ -3095,7 +3095,7 @@ def _cli_dispatch(args: argparse.Namespace) -> int:
         return 0
 
     if cmd == "run":
-        print(f"[*] AILang-Core {__version__}")
+        print(f"[*] Nexus AILang-Core {__version__}")
         config: Dict[str, Any] = {}
         cfg_path = Path(args.config)
         if cfg_path.exists():
@@ -3474,7 +3474,7 @@ class TestCognitiveBrain(unittest.TestCase):
         self.assertEqual(self.engine.schema_pack.resolve_alias("proj"), "project")
 
     def test_ingest_persists_chunks_and_provenance(self):
-        doc = self.engine.ingest("repo", "Projects/AILang.md", "AILang-Core uses a cognitive graph.")
+        doc = self.engine.ingest("repo", "Projects/AILang.md", "Nexus AILang-Core uses a cognitive graph.")
         self.assertEqual(doc.type, "project")
         self.assertEqual(len(self.store.all_chunks()), 1)
         row = self.store._db.execute(

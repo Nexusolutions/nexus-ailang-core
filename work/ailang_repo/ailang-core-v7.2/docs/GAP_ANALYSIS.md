@@ -2,7 +2,7 @@
 
 ## Veredicto del equipo
 
-AILang-Core v7.1 es un **runtime cognitivo + DSL de conocimiento**, no aún un
+Nexus AILang-Core v7.1 es un **runtime cognitivo + DSL de conocimiento**, no aún un
 lenguaje de programación general. Para serlo hace falta un **núcleo de lenguaje**
 (expresiones, control de flujo, funciones, tipos, runtime de evaluación).
 

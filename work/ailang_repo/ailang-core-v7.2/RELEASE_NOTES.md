@@ -69,7 +69,7 @@ maestro para declarar 1.0.
 
 ### PyPI package
 ```bash
-pip install ailang-core==1.0.0-rc.1
+pip install Nexus AILang-Core==1.0.0-rc.1
 ```
 
 ### Verificación post-instalación

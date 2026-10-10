@@ -1,14 +1,25 @@
 [project]
-name = "ailang-core"
+name = "nexus-ailang-core"
 version = "1.1.0"
-description = "AILang-Core: lenguaje + IR cognitivo + runtime verificado (FASE 0 + A/B/C + P1/P2/P3 + S1-S5 completados)"
-authors = [{ name = "Enrique Jimenez García" }]
+description = "Nexus AILang-Core: lenguaje de programación con runtime cognitivo, capability enforcement, pipeline HIR/MIR/AIR, y backends LLVM/WASM"
+authors = [{ name = "Enrique Jimenez Garcia" }]
+license = { text = "MIT" }
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["numpy"]
 
 [project.optional-dependencies]
 crypto = ["cryptography"]
 postgres = ["psycopg[binary]", "psycopg-pool"]
+llvm = ["llvmlite"]
+testing = ["hypothesis", "pytest", "pytest-cov"]
+all = ["cryptography", "psycopg[binary]", "psycopg-pool", "llvmlite", "hypothesis", "pytest", "pytest-cov"]
+
+[project.urls]
+Homepage = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core"
+Repository = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core"
+Documentation = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core/tree/main/docs"
+Issues = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core/issues"
 
 [build-system]
 requires = ["setuptools>=61"]
