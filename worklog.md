@@ -127,3 +127,25 @@ Stage Summary:
 - Pipeline HIR/MIR/AIR: integrado con effect inference y capability mapping.
 - CI: 9 combinaciones OS×Python listas para GitHub Actions.
 - Próximos pasos sugeridos: P4 (Native/LLVM, WASM, GPU/NPU/TPU reales, cryptography API) — son tareas experimentales post-1.0.
+
+---
+Task ID: EXEC-4
+Agent: Super Z (orchestrator)
+Task: Continuar con siguientes pasos: S1 (AIR interpreter), S2 (DAP completo), S3 (fuzzing), S4 (PostgreSQL real), S5 (package manager completo)
+
+Work Log:
+- S1: Creado ailang/runtime/air_interpreter.py con run_air(source) que compila a AIR + verifica capabilities + ejecuta via VM. CLI --air flag añadido.
+- S2: DAP reescrito con 14 métodos: initialize/launch/setBreakpoints/setExceptionBreakpoints/configurationDone/continue/next/stepIn/stepOut/pause/terminate/threads/stackTrace/scopes/variables/evaluate/setVariable/source. Integración real con Debugger threading.Event. stopped events emitidos en breakpoints.
+- S3: Creado tests/test_fuzz.py con 11 fuzz targets (lexer/parser/interp/VM/formatter/linter/AIR pipeline/idempotencia). Instalé atheris+hypothesis. Fuzzer encontró bug del parser: input "0.." causaba ValueError en lugar de AILangSyntaxError. Fixeado en parser.py:485 con try/except ValueError → AILangSyntaxError.
+- S4: PostgreSQL backend completamente reimplementado: psycopg_pool ConnectionPool, UPSERT con ON CONFLICT, transacciones BEGIN/COMMIT/ROLLBACK, búsqueda lexical ILIKE, búsqueda vectorial pgvector cosine <=>, búsqueda FTS to_tsvector+ts_rank. Ya NO hay NotImplementedError ni return [].
+- S5: Package manager ampliado: publish (crea .ailpkg tar.gz con manifest+checksums+signature opcional), update (instala versión más reciente del registry), remove (desinstala), search (busca por nombre). install ahora acepta .ailpkg files con verificación SHA-256. Verificado end-to-end: init→publish→search→install→remove.
+- Versión bumped a 5.5.0. CHANGELOG y README actualizados.
+
+Stage Summary:
+- Tests totales: 173 pytest + 44 embebidos = 217. 100% verde.
+- ailang doctor: 11/11 componentes OK.
+- Bug del parser fixeado (encontrado por fuzzer): input "0.." ahora lanza AILangSyntaxError en lugar de ValueError.
+- PostgreSQL backend: real (no más stubs/NotImplementedError/return []).
+- Package manager: 7 comandos (init/install/list/run/publish/update/remove/search).
+- DAP: 14 métodos con threading real del debugger.
+- AIR interpreter: --air flag funcional (compila + verifica + ejecuta).

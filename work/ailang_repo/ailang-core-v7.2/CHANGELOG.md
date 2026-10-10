@@ -1,5 +1,80 @@
 # Changelog
 
+## 5.5.0 — S1 + S2 + S3 + S4 + S5
+
+### S1 — Intérprete AIR nativo
+- `ailang/runtime/air_interpreter.py`: API `run_air(source)` que compila a AIR,
+  verifica capabilities, y ejecuta via VM.
+- CLI `--air` flag: `python -m ailang --air file.ailang` o `-c "source"`.
+- Integración con capability enforcement: programas que requieren capabilities
+  no concedidas son rechazados antes de ejecutar.
+- `analyze_source()` para análisis estático sin ejecución.
+
+### S2 — DAP completo
+- `ailang/dap.py` reescrito con 14 métodos DAP:
+  - initialize (con capabilities declaradas: supportsSetVariable, supportsTerminateRequest, etc.)
+  - launch, setBreakpoints (con conditional breakpoints), setExceptionBreakpoints
+  - continue, next, stepIn, stepOut, pause, terminate
+  - threads (single-thread report), stackTrace (con source info)
+  - scopes (Locals + Globals), variables (con variablesReference para list/dict expansion)
+  - evaluate (evalúa expresiones simples en el contexto del frame)
+  - setVariable (modifica variables en runtime)
+  - source (retorna contenido del archivo)
+- Integración real con Debugger (P0-10): threading.Event para pause/continue,
+  `stopped` events emitidos cuando se alcanza un breakpoint.
+
+### S3 — Fuzzing con hypothesis/atheris
+- `tests/test_fuzz.py` con 11 fuzz targets cubriendo:
+  - Lexer (ASCII + Unicode input arbitrario)
+  - Parser (input arbitrario)
+  - Interpreter (input arbitrario)
+  - VM (input arbitrario)
+  - Formatter (format_source + format_ast)
+  - Linter
+  - AIR pipeline (compile_to_air + run_air)
+  - Idempotencia de format_ast
+- **Bug encontrado y fixeado**: parser crasheaba con `ValueError` en input `0..`
+  (número malformado). Fix: `parser.py:485` ahora captura `ValueError` y lanza
+  `AILangSyntaxError` con mensaje claro.
+- Suite total: 173 tests (162 + 11 fuzz).
+
+### S4 — PostgreSQL backend real
+- `ailang/storage/postgres_backend.py` completamente reimplementado:
+  - Connection pool via `psycopg_pool.ConnectionPool` (min 2, max 10 conexiones)
+  - CRUD real: `upsert_document` con `ON CONFLICT DO UPDATE`, `replace_chunks`
+    con `DELETE + INSERT` en transacción explícita (BEGIN/COMMIT/ROLLBACK)
+  - `list_documents`/`list_chunks` con `SELECT ... ORDER BY created_at DESC`
+  - Búsqueda lexical: `ILIKE` para substring match
+  - Búsqueda vectorial: pgvector cosine distance `<=>` operator
+  - Búsqueda FTS: `to_tsvector + ts_rank` (PostgreSQL nativo full-text)
+  - Schema con `created_at`/`updated_at` TIMESTAMPTZ, índices ivfflat + gin
+  - Graceful degradation: si psycopg-pool no instalado, `_init_error` captura
+    el error y las operaciones posteriores lanzan RuntimeError claro
+- Ya NO hay `NotImplementedError` ni `return []` — implementación real.
+
+### S5 — Package manager completo
+- `ailang/pkg.py` ampliado con 4 nuevos comandos:
+  - `publish`: empaqueta directorio → `.ailpkg` (tar.gz) con manifest.json +
+    checksum.sha256 (SHA-256 de cada archivo) + signature.bin opcional (Ed25519)
+  - `update`: instala la versión más reciente (o específica con `--version`)
+    desde el registry local
+  - `remove`: desinstala un paquete del registry local
+  - `search`: busca por nombre en paquetes instalados y publicados
+- `install` ahora acepta `.ailpkg` files además de directorios, con
+  verificación de checksums opcional (`--no-verify` para skip)
+- Formato `.ailpkg`: tar.gz con manifest.json, archivos del paquete,
+  checksum.sha256, signature.bin opcional
+- Registry local: `~/.ailang/packages/registry/` para `.ailpkg` publicados
+- Verificado end-to-end: init → publish → search → install → remove
+
+### Métricas
+- Tests `pytest tests/`: 173/173 ✅ (162 + 11 fuzz).
+- Tests embebidos monolito: 44/44 ✅.
+- `ailang doctor`: 11/11 componentes OK.
+- Bug del parser fixeado (encontrado por fuzzer).
+- PostgreSQL backend: real (no más stubs).
+- Package manager: 7 comandos (init/install/list/run/publish/update/remove/search).
+
 ## 5.4.0 — P3-9b + P3-1b + P2-10 + P2-13 + P2-14
 
 ### P3-9b — Capability enforcement integrado en stdlib

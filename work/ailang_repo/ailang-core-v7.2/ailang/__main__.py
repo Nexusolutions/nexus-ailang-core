@@ -123,6 +123,8 @@ def main(argv=None):
     p.add_argument("-c", "--cmd", help="Ejecutar programa en línea")
     p.add_argument("--repl", action="store_true")
     p.add_argument("--vm", action="store_true")
+    p.add_argument("--air", action="store_true",
+                   help="Ejecutar via AIR (verifica capabilities + ejecuta via VM)")
     p.add_argument("--strict", action="store_true")
     p.add_argument("--test", nargs="*", metavar="PATH")
     p.add_argument("--version", action="store_true")
@@ -181,6 +183,29 @@ def main(argv=None):
 
     from ailang.lang.interpreter import run_source, create_repl
     kw = {"use_vm": args.vm, "typecheck_strict": True if args.strict else None}
+
+    # P3-1b/S1: --air flag ejecuta via AIR (verificación capabilities + VM)
+    if args.air:
+        from ailang.runtime.air_interpreter import run_air
+        if args.cmd:
+            try:
+                r = run_air(args.cmd, use_vm=True)
+                if r is not None:
+                    print(repr(r))
+            except Exception as e:
+                print(e, file=sys.stderr)
+                return 1
+            return 0
+        if args.file:
+            src = Path(args.file).read_text(encoding="utf-8")
+            try:
+                r = run_air(src, use_vm=True)
+                if r is not None:
+                    print(repr(r))
+            except Exception as e:
+                print(e, file=sys.stderr)
+                return 1
+            return 0
 
     if args.cmd:
         try:

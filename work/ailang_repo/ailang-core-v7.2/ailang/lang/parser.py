@@ -482,7 +482,11 @@ class Parser:
         t = self.cur()
         if t.kind == "NUMBER":
             self.adv()
-            v = float(t.value) if "." in t.value else int(t.value)
+            try:
+                v = float(t.value) if "." in t.value else int(t.value)
+            except ValueError:
+                # Números malformados como "0." o "0..1" — treat as syntax error
+                raise AILangSyntaxError(f"número inválido: {t.value!r}", t.line, t.col)
             return A.Literal(v)
         if t.kind == "STRING":
             self.adv()
