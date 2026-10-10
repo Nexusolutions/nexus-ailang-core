@@ -1,8 +1,0 @@
-numpy
-
-[crypto]
-cryptography
-
-[postgres]
-psycopg[binary]
-psycopg-pool
