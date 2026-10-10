@@ -57,7 +57,11 @@ class TestNewStdlib(unittest.TestCase):
         self.assertTrue(isinstance(r, float) and r > 0)
 
     def test_sys(self):
-        self.assertEqual(run_source("import sys\nsys.version()"), "ailang-8.1")
+        # P0-1 (FASE 1): sys.version() ahora lee RUNTIME_ID de ailang.versions.
+        # Antes estaba hardcodeado a "ailang-8.1".
+        from ailang.versions import PUBLIC_VERSION
+        self.assertEqual(run_source("import sys\nsys.version()"),
+                         f"ailang-{PUBLIC_VERSION}")
 
     def test_test_mod(self):
         r = run_source("""

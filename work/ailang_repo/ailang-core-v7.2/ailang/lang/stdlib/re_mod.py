@@ -3,7 +3,7 @@ import re as _re
 def search(pattern, text):
     m = _re.search(str(pattern), str(text))
     if not m:
-        return null if False else None
+        return None
     return {"match": m.group(0), "start": m.start(), "end": m.end(), "groups": list(m.groups())}
 
 def match(pattern, text):

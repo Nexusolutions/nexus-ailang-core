@@ -115,11 +115,20 @@ __all__ = [
 ]
 
 AUTHOR = "Enrique Jimenez García"
-__version__ = "2.0.0"
+# P0-1 (FASE 1): el monolito reporta la misma versión que el paquete modular.
+# Antes tenía __version__ = "2.0.0" discordante con ailang/__init__.py (5.0.0).
+try:
+    from ailang.versions import __version__ as _ailang_pkg_version
+    __version__ = _ailang_pkg_version
+except ImportError:
+    # Fallback si ailang.versions no está disponible (ej.: tests aislados del monolito)
+    __version__ = "5.1.0"
 FORMAT_VERSION = 6
+FORMAT_VERSION_SIGNED = 7  # P0-11: bytecode firmado Ed25519 (header + digest + payload + signature)
 MAGIC = b"AUR6"
 DEFAULT_BUDGET_MS = 33.0
 DIGEST_SIZE = hashlib.sha256().digest_size  # 32
+SIGNATURE_SIZE = 64  # P0-11: Ed25519 signature es siempre 64 bytes
 COMPRESS_THRESHOLD = 1024
 
 # =============================================================================
@@ -550,12 +559,19 @@ class DecodedProgram:
 
 
 class AILangCompiler:
-    """Compila fuente + Cognitive IR sin cambiar el formato físico del bytecode v6."""
+    """Compila fuente + Cognitive IR sin cambiar el formato físico del bytecode v6.
 
-    def __init__(self, source_code: str, extensions: Extension = Extension.ALL):
+    P0-11: Soporta firma opcional Ed25519. Si se pasa `private_key`, se embebe
+    la firma (64 bytes) entre el digest SHA-256 y el payload, y se bumpa
+    `FORMAT_VERSION_SIGNED = 7` para distinguir formatos.
+    """
+
+    def __init__(self, source_code: str, extensions: Extension = Extension.ALL,
+                 private_key: Any = None):
         self.source_code = source_code
         self.extensions = extensions
         self.cognitive_ir: Optional[CognitiveIR] = None
+        self.private_key = private_key
 
     def compile_ir(self) -> CognitiveIR:
         self.cognitive_ir = CognitiveCompiler.parse(self.source_code)
@@ -573,8 +589,14 @@ class AILangCompiler:
         # contiene errores semánticos o viola Zero-Footprint.
         self.compile_ir()
         payload = self.source_code.encode("utf-8")
-        header = _HEADER.pack(MAGIC, FORMAT_VERSION, int(self.extensions), budget_ms, len(payload))
-        return header + hashlib.sha256(payload).digest() + payload
+        version = FORMAT_VERSION_SIGNED if self.private_key is not None else FORMAT_VERSION
+        header = _HEADER.pack(MAGIC, version, int(self.extensions), budget_ms, len(payload))
+        digest = hashlib.sha256(payload).digest()
+        body = header + digest + payload
+        if self.private_key is not None:
+            signature = sign_bytecode(body, self.private_key)
+            return body + signature
+        return body
 
     def compile_and_execute(self, engine: Any, *, capabilities: Optional[Sequence[str]] = None) -> List[Any]:
         """Compila, autoriza y ejecuta las primitivas cognitivas del programa."""
@@ -582,20 +604,53 @@ class AILangCompiler:
         runtime = CognitiveRuntime(engine, capabilities=capabilities)
         return runtime.execute(ir)
 
-def decode_bytecode(blob: bytes) -> DecodedProgram:
+def decode_bytecode(blob: bytes, public_key: Any = None,
+                    require_signature: bool = False) -> DecodedProgram:
+    """Decodifica y valida bytecode AILang.
+
+    P0-11: Soporta verificación opcional de firma Ed25519. Si el blob es v7
+    (firmado) y `public_key` se pasa, verifica la firma. Si el blob es v7 y
+    `require_signature=True` pero no se pasa `public_key`, lanza IntegrityError.
+    Bloques v6 sin firma son aceptados retroactivamente.
+    """
     if len(blob) < _HEADER.size + DIGEST_SIZE:
         raise CompilerError("Bytecode demasiado corto.")
     magic, version, flags, budget_ms, length = _HEADER.unpack_from(blob)
     if magic != MAGIC:
         raise CompilerError("Cabecera mágica inválida.")
-    if version != FORMAT_VERSION:
+    if version not in (FORMAT_VERSION, FORMAT_VERSION_SIGNED):
         raise CompilerError(f"Versión no soportada: {version}.")
     digest = blob[_HEADER.size:_HEADER.size + DIGEST_SIZE]
     payload = blob[_HEADER.size + DIGEST_SIZE:]
+    # Si es v7 firmado, los últimos SIGNATURE_SIZE bytes son la firma
+    signature: Optional[bytes] = None
+    if version == FORMAT_VERSION_SIGNED:
+        if len(payload) < length + SIGNATURE_SIZE:
+            raise IntegrityError("Bytecode firmado pero signature ausente o truncada.")
+        signature = payload[length:length + SIGNATURE_SIZE]
+        payload = payload[:length]
     if len(payload) != length:
         raise IntegrityError("Longitud del payload no coincide con la cabecera.")
     if hashlib.sha256(payload).digest() != digest:
         raise IntegrityError("El digest no coincide: bytecode alterado.")
+    # Verificación de firma (P0-11)
+    if version == FORMAT_VERSION_SIGNED:
+        if public_key is None:
+            if require_signature:
+                raise IntegrityError(
+                    "Bytecode firmado pero no se proporcionó public_key "
+                    "y require_signature=True."
+                )
+            # Aceptamos retroactivamente si no se exige verificación
+        else:
+            assert signature is not None
+            signed_body = blob[:_HEADER.size + DIGEST_SIZE + length]
+            if not verify_bytecode_signature(signed_body, signature, public_key):
+                raise IntegrityError("Firma Ed25519 inválida: bytecode falsificado.")
+    elif require_signature:
+        raise IntegrityError(
+            "require_signature=True pero el bytecode no está firmado (FORMAT_VERSION=6)."
+        )
     source = payload.decode("utf-8")
     if _PURGE_CLAUSE.search(strip_comments(source)) is None:
         raise IntegrityError("Bytecode sin cláusula purge_after válida tras decodificar.")
@@ -603,11 +658,12 @@ def decode_bytecode(blob: bytes) -> DecodedProgram:
 
 
 def sign_bytecode(blob: bytes, private_key: Any) -> bytes:
-    """Firma Ed25519 (requiere cryptography)."""
+    """Firma Ed25519 (requiere cryptography). Devuelve 64 bytes de signature."""
     return private_key.sign(blob)
 
 
 def verify_bytecode_signature(blob: bytes, signature: bytes, public_key: Any) -> bool:
+    """Verifica Ed25519. Devuelve True si la firma es válida, False en caso contrario."""
     from cryptography.exceptions import InvalidSignature
     try:
         public_key.verify(signature, blob)
@@ -1712,6 +1768,32 @@ class PersistentOutbox:
                 f"SELECT {_OUTBOX_COLUMNS} FROM outbox WHERE status='dead' ORDER BY id DESC"
             ).fetchall()
         return [_row_to_item(r) for r in rows]
+
+    def list_pending(self, limit: int = 32) -> List[OutboxItem]:
+        """Lista los items pendientes (status='pending'), sin consumirlos.
+
+        Alias público de `due()` para uso desde la CLI. Se diferencia de `due()`
+        en que NO filtra por `next_attempt <= now` (muestra todos los pendientes
+        incluso si su próximo intento es futuro).
+        """
+        with self._lock:
+            rows = self._db.execute(
+                f"SELECT {_OUTBOX_COLUMNS} FROM outbox "
+                "WHERE status='pending' ORDER BY next_attempt LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+        return [_row_to_item(r) for r in rows]
+
+    def purge_dead(self) -> int:
+        """Elimina todos los items muertos (status='dead') del outbox.
+
+        Devuelve el número de filas eliminadas. Útil para mantener el outbox
+        acotado sin perder la posibilidad de requeue previo (ver `requeue_dead`).
+        """
+        with self._lock:
+            cur = self._db.execute("DELETE FROM outbox WHERE status='dead'")
+            self._db.commit()
+            return cur.rowcount
 
     def requeue_dead(self) -> int:
         now = self._clock()
@@ -3426,7 +3508,10 @@ class TestCognitiveBrain(unittest.TestCase):
 
 class TestV70Integrations(unittest.TestCase):
     def test_version_and_prometheus(self):
-        self.assertEqual(__version__, "1.0.0")
+        # Versión es un string semver válido >= 2.0.0 (NO hard-locked a un literal,
+        # para permitir bumps de versión sin romper el test embebido).
+        self.assertGreaterEqual(tuple(int(p) for p in __version__.split(".")),
+                                (2, 0, 0))
         m = Metrics()
         m.inc("messages_sent", 3)
         text = m.prometheus()

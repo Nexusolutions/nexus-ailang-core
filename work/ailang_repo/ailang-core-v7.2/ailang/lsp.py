@@ -1,9 +1,9 @@
-"""Language Server Protocol mínimo para AILang (Nivel B).
+"""Language Server Protocol mínimo para AILang.
 
 Soporta: initialize, textDocument/didOpen, didChange,
 textDocument/completion, textDocument/hover, textDocument/diagnostic (pull via didOpen).
 
-Uso: python -m ailang.lsp
+Uso: python -m ailang --lsp
 """
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import json
 import sys
 from typing import Any, Dict, List, Optional
 
+from ailang.versions import __version__ as LSP_SERVER_VERSION
 from ailang.lang.typecheck import typecheck
 from ailang.lang.lexer import tokenize
 from ailang.lang.errors import AILangSyntaxError
@@ -46,7 +47,7 @@ class AILangLanguageServer:
                         "hoverProvider": True,
                         "definitionProvider": True,
                     },
-                    "serverInfo": {"name": "ailang-lsp", "version": "2.0.0"},
+                    "serverInfo": {"name": "ailang-lsp", "version": LSP_SERVER_VERSION},
                 })
             elif method == "initialized":
                 pass

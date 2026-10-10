@@ -1,0 +1,700 @@
+     1→"""Bytecode VM apilada para AILang (v8.3) — núcleo + class/import + try/catch."""
+     2→from __future__ import annotations
+     3→
+     4→from dataclasses import dataclass, field
+     5→from pathlib import Path
+     6→from typing import Any, Dict, List, Optional, Tuple
+     7→
+     8→from ailang.lang import ast_nodes as A
+     9→from ailang.lang.parser import parse
+    10→from ailang.lang.errors import AILangRuntimeError
+    11→
+    12→
+    13→(
+    14→    LOAD_CONST, LOAD_NAME, STORE_NAME, DEFINE_NAME,
+    15→    BINARY_OP, UNARY_OP, CALL, RETURN,
+    16→    JUMP, JUMP_IF_FALSE, JUMP_IF_TRUE, POP,
+    17→    BUILD_LIST, BUILD_DICT, GET_ITEM,
+    18→    MAKE_FUNCTION, LOAD_ATTR, STORE_ATTR,
+    19→    THROW, MAKE_CLASS, IMPORT_MODULE,
+    20→    SETUP_CATCH, POP_CATCH,
+    21→) = range(23)
+    22→
+    23→
+    24→@dataclass
+    25→class CodeObject:
+    26→    name: str
+    27→    bytecode: List[Tuple[int, Any]] = field(default_factory=list)
+    28→    constants: List[Any] = field(default_factory=list)
+    29→    names: List[str] = field(default_factory=list)
+    30→    arity: int = 0
+    31→
+    32→
+    33→@dataclass
+    34→class VMFunction:
+    35→    code: CodeObject
+    36→    params: Tuple[str, ...]
+    37→    closure: Dict[str, Any]
+    38→    is_method: bool = False
+    39→
+    40→
+    41→@dataclass
+    42→class VMClass:
+    43→    name: str
+    44→    base: Optional["VMClass"]
+    45→    methods: Dict[str, VMFunction]
+    46→
+    47→    def lookup(self, name: str):
+    48→        cur: Optional[VMClass] = self
+    49→        while cur is not None:
+    50→            if name in cur.methods:
+    51→                return cur.methods[name], cur
+    52→            cur = cur.base
+    53→        return None, None
+    54→
+    55→
+    56→@dataclass
+    57→class VMInstance:
+    58→    cls: VMClass
+    59→    fields: Dict[str, Any] = field(default_factory=dict)
+    60→
+    61→    def __repr__(self) -> str:
+    62→        return f"<{self.cls.name} instance>"
+    63→
+    64→
+    65→@dataclass
+    66→class VMBoundMethod:
+    67→    instance: VMInstance
+    68→    func: VMFunction
+    69→    defining: VMClass
+    70→
+    71→
+    72→@dataclass
+    73→class SuperProxy:
+    74→    instance: VMInstance
+    75→    start_cls: VMClass
+    76→
+    77→
+    78→@dataclass
+    79→class VMModule:
+    80→    name: str
+    81→    exports: Dict[str, Any]
+    82→
+    83→    def __getattr__(self, item: str) -> Any:
+    84→        if item.startswith("_"):
+    85→            return object.__getattribute__(self, item)
+    86→        try:
+    87→            return self.exports[item]
+    88→        except KeyError as e:
+    89→            raise AttributeError(item) from e
+    90→
+    91→
+    92→class Compiler:
+    93→    def __init__(self):
+    94→        self.code = CodeObject("<module>")
+    95→        self._loop_stack: List[Tuple[List[int], List[int]]] = []
+    96→
+    97→    def emit(self, op: int, arg: Any = None) -> int:
+    98→        self.code.bytecode.append((op, arg))
+    99→        return len(self.code.bytecode) - 1
+   100→
+   101→    def const(self, v: Any) -> int:
+   102→        for i, c in enumerate(self.code.constants):
+   103→            if c is v or c == v:
+   104→                return i
+   105→        self.code.constants.append(v)
+   106→        return len(self.code.constants) - 1
+   107→
+   108→    def name(self, n: str) -> int:
+   109→        if n not in self.code.names:
+   110→            self.code.names.append(n)
+   111→        return self.code.names.index(n)
+   112→
+   113→    def compile_program(self, program: A.Program) -> CodeObject:
+   114→        self.emit(LOAD_CONST, self.const(None))
+   115→        self.emit(DEFINE_NAME, self.name("__last__"))
+   116→        for stmt in program.body:
+   117→            self.compile_stmt(stmt)
+   118→        self.emit(LOAD_NAME, self.name("__last__"))
+   119→        self.emit(RETURN)
+   120→        return self.code
+   121→
+   122→    def _compile_function_body(self, name: str, params: List[str], body: List[Any]) -> CodeObject:
+   123→        nested = Compiler()
+   124→        nested.code = CodeObject(name, arity=len(params))
+   125→        for s in body:
+   126→            nested.compile_stmt(s)
+   127→        nested.emit(LOAD_CONST, nested.const(None))
+   128→        nested.emit(RETURN)
+   129→        return nested.code
+   130→
+   131→    def compile_stmt(self, node: Any) -> None:
+   132→        if isinstance(node, A.Let) or isinstance(node, A.Const):
+   133→            self.compile_expr(node.value)
+   134→            self.emit(DEFINE_NAME, self.name(node.name))
+   135→        elif isinstance(node, A.Assign):
+   136→            if isinstance(node.name, str):
+   137→                self.compile_expr(node.value)
+   138→                self.emit(STORE_NAME, self.name(node.name))
+   139→            elif isinstance(node.name, A.Attr):
+   140→                self.compile_expr(node.name.value)
+   141→                self.compile_expr(node.value)
+   142→                self.emit(STORE_ATTR, self.name(node.name.attr))
+   143→            else:
+   144→                raise AILangRuntimeError("assign no compilable")
+   145→        elif isinstance(node, A.ExprStmt):
+   146→            self.compile_expr(node.value)
+   147→            self.emit(DEFINE_NAME, self.name("__last__"))
+   148→        elif isinstance(node, A.Return):
+   149→            if node.value is None:
+   150→                self.emit(LOAD_CONST, self.const(None))
+   151→            else:
+   152→                self.compile_expr(node.value)
+   153→            self.emit(RETURN)
+   154→        elif isinstance(node, A.If):
+   155→            self.compile_expr(node.test)
+   156→            j_else = self.emit(JUMP_IF_FALSE, 0)
+   157→            for s in node.body:
+   158→                self.compile_stmt(s)
+   159→            j_end = self.emit(JUMP, 0)
+   160→            else_ip = len(self.code.bytecode)
+   161→            self.code.bytecode[j_else] = (JUMP_IF_FALSE, else_ip)
+   162→            for s in node.orelse:
+   163→                self.compile_stmt(s)
+   164→            self.code.bytecode[j_end] = (JUMP, len(self.code.bytecode))
+   165→        elif isinstance(node, A.While):
+   166→            breaks, continues = [], []
+   167→            self._loop_stack.append((breaks, continues))
+   168→            start = len(self.code.bytecode)
+   169→            self.compile_expr(node.test)
+   170→            j_exit = self.emit(JUMP_IF_FALSE, 0)
+   171→            for s in node.body:
+   172→                self.compile_stmt(s)
+   173→            cont_target = len(self.code.bytecode)
+   174→            self.emit(JUMP, start)
+   175→            exit_ip = len(self.code.bytecode)
+   176→            self.code.bytecode[j_exit] = (JUMP_IF_FALSE, exit_ip)
+   177→            for ip in breaks:
+   178→                self.code.bytecode[ip] = (JUMP, exit_ip)
+   179→            for ip in continues:
+   180→                self.code.bytecode[ip] = (JUMP, cont_target)
+   181→            self._loop_stack.pop()
+   182→        elif isinstance(node, A.For):
+   183→            self.compile_expr(node.iter)
+   184→            self.emit(DEFINE_NAME, self.name("__it"))
+   185→            self.emit(LOAD_CONST, self.const(0))
+   186→            self.emit(DEFINE_NAME, self.name("__i"))
+   187→            breaks, continues = [], []
+   188→            self._loop_stack.append((breaks, continues))
+   189→            start = len(self.code.bytecode)
+   190→            # condición: __i < len(__it)
+   191→            self.emit(LOAD_NAME, self.name("__i"))
+   192→            self.emit(LOAD_NAME, self.name("len"))
+   193→            self.emit(LOAD_NAME, self.name("__it"))
+   194→            self.emit(CALL, 1)
+   195→            self.emit(BINARY_OP, "<")
+   196→            j_exit = self.emit(JUMP_IF_FALSE, 0)
+   197→            self.emit(LOAD_NAME, self.name("__it"))
+   198→            self.emit(LOAD_NAME, self.name("__i"))
+   199→            self.emit(GET_ITEM)
+   200→            self.emit(DEFINE_NAME, self.name(node.target))
+   201→            for s in node.body:
+   202→                self.compile_stmt(s)
+   203→            cont_target = len(self.code.bytecode)
+   204→            self.emit(LOAD_NAME, self.name("__i"))
+   205→            self.emit(LOAD_CONST, self.const(1))
+   206→            self.emit(BINARY_OP, "+")
+   207→            self.emit(STORE_NAME, self.name("__i"))
+   208→            self.emit(JUMP, start)
+   209→            exit_ip = len(self.code.bytecode)
+   210→            self.code.bytecode[j_exit] = (JUMP_IF_FALSE, exit_ip)
+   211→            for ip in breaks:
+   212→                self.code.bytecode[ip] = (JUMP, exit_ip)
+   213→            for ip in continues:
+   214→                self.code.bytecode[ip] = (JUMP, cont_target)
+   215→            self._loop_stack.pop()
+   216→        elif isinstance(node, A.Break):
+   217→            if not self._loop_stack:
+   218→                raise AILangRuntimeError("break fuera de bucle")
+   219→            self._loop_stack[-1][0].append(self.emit(JUMP, 0))
+   220→        elif isinstance(node, A.Continue):
+   221→            if not self._loop_stack:
+   222→                raise AILangRuntimeError("continue fuera de bucle")
+   223→            self._loop_stack[-1][1].append(self.emit(JUMP, 0))
+   224→        elif isinstance(node, A.Function):
+   225→            cobj = self._compile_function_body(node.name, node.params, node.body)
+   226→            self.emit(LOAD_CONST, self.const(cobj))
+   227→            self.emit(MAKE_FUNCTION, (node.name, tuple(node.params), False))
+   228→            self.emit(DEFINE_NAME, self.name(node.name))
+   229→        elif isinstance(node, A.ClassDef):
+   230→            method_meta = []
+   231→            for m in node.methods:
+   232→                cobj = self._compile_function_body(m.name, m.params, m.body)
+   233→                self.emit(LOAD_CONST, self.const(cobj))
+   234→                self.emit(MAKE_FUNCTION, (m.name, tuple(m.params), True))
+   235→                method_meta.append(m.name)
+   236→            # stack: method0, method1, ... (bottom to top)
+   237→            self.emit(MAKE_CLASS, (node.name, node.base, tuple(method_meta)))
+   238→            self.emit(DEFINE_NAME, self.name(node.name))
+   239→        elif isinstance(node, A.Import):
+   240→            self.emit(IMPORT_MODULE, (node.module, node.alias))
+   241→        elif isinstance(node, A.Block):
+   242→            for s in node.body:
+   243→                self.compile_stmt(s)
+   244→        elif isinstance(node, A.Match):
+   245→            self.compile_expr(node.subject)
+   246→            self.emit(DEFINE_NAME, self.name("__match_subj"))
+   247→            end_jumps = []
+   248→            for case in node.cases:
+   249→                is_wild = isinstance(case.pattern, A.Name) and case.pattern.id == "_"
+   250→                is_bind = isinstance(case.pattern, A.Name) and case.pattern.id != "_"
+   251→                if is_wild or is_bind:
+   252→                    if is_bind:
+   253→                        self.emit(LOAD_NAME, self.name("__match_subj"))
+   254→                        self.emit(DEFINE_NAME, self.name(case.pattern.id))
+   255→                    for s in case.body:
+   256→                        self.compile_stmt(s)
+   257→                    end_jumps.append(self.emit(JUMP, 0))
+   258→                    break  # wildcard/bind ends match
+   259→                # literal / comparable pattern
+   260→                self.emit(LOAD_NAME, self.name("__match_subj"))
+   261→                if isinstance(case.pattern, A.Literal):
+   262→                    self.emit(LOAD_CONST, self.const(case.pattern.value))
+   263→                else:
+   264→                    self.compile_expr(case.pattern)
+   265→                self.emit(BINARY_OP, "==")
+   266→                j_next = self.emit(JUMP_IF_FALSE, 0)
+   267→                for s in case.body:
+   268→                    self.compile_stmt(s)
+   269→                end_jumps.append(self.emit(JUMP, 0))
+   270→                self.code.bytecode[j_next] = (JUMP_IF_FALSE, len(self.code.bytecode))
+   271→            end_ip = len(self.code.bytecode)
+   272→            for j in end_jumps:
+   273→                self.code.bytecode[j] = (JUMP, end_ip)
+   274→        elif isinstance(node, A.Throw):
+   275→            self.compile_expr(node.value)
+   276→            self.emit(THROW)
+   277→        elif isinstance(node, A.Try):
+   278→            # SETUP_CATCH handler_ip; body; POP_CATCH; JUMP end
+   279→            # handler: POP_CATCH (if re-entry clean); DEFINE catch_name; catch_body; end:
+   280→            setup_ip = self.emit(SETUP_CATCH, 0)  # patch handler
+   281→            for s in node.body:
+   282→                self.compile_stmt(s)
+   283→            self.emit(POP_CATCH)
+   284→            j_end = self.emit(JUMP, 0)
+   285→            handler_ip = len(self.code.bytecode)
+   286→            self.code.bytecode[setup_ip] = (SETUP_CATCH, (handler_ip, node.catch_name))
+   287→            # exception value is on stack when jumping here
+   288→            self.emit(DEFINE_NAME, self.name(node.catch_name))
+   289→            for s in node.catch_body:
+   290→                self.compile_stmt(s)
+   291→            end_ip = len(self.code.bytecode)
+   292→            self.code.bytecode[j_end] = (JUMP, end_ip)
+   293→        else:
+   294→            raise AILangRuntimeError(f"VM no soporta {type(node).__name__}")
+   295→
+   296→    def compile_expr(self, node: Any) -> None:
+   297→        if isinstance(node, A.Literal):
+   298→            self.emit(LOAD_CONST, self.const(node.value))
+   299→        elif isinstance(node, A.Name):
+   300→            self.emit(LOAD_NAME, self.name(node.id))
+   301→        elif isinstance(node, A.UnaryOp):
+   302→            self.compile_expr(node.operand)
+   303→            self.emit(UNARY_OP, node.op)
+   304→        elif isinstance(node, A.BinOp):
+   305→            self.compile_expr(node.left)
+   306→            self.compile_expr(node.right)
+   307→            self.emit(BINARY_OP, node.op)
+   308→        elif isinstance(node, A.Call):
+   309→            self.compile_expr(node.func)
+   310→            for a in node.args:
+   311→                self.compile_expr(a)
+   312→            self.emit(CALL, len(node.args))
+   313→        elif isinstance(node, A.ListLit):
+   314→            for e in node.elts:
+   315→                self.compile_expr(e)
+   316→            self.emit(BUILD_LIST, len(node.elts))
+   317→        elif isinstance(node, A.DictLit):
+   318→            for k, v in zip(node.keys, node.values):
+   319→                self.compile_expr(k)
+   320→                self.compile_expr(v)
+   321→            self.emit(BUILD_DICT, len(node.keys))
+   322→        elif isinstance(node, A.Index):
+   323→            self.compile_expr(node.value)
+   324→            self.compile_expr(node.index)
+   325→            self.emit(GET_ITEM)
+   326→        elif isinstance(node, A.Attr):
+   327→            self.compile_expr(node.value)
+   328→            self.emit(LOAD_ATTR, self.name(node.attr))
+   329→        elif isinstance(node, A.Lambda):
+   330→            cobj = self._compile_function_body("<lambda>", node.params, node.body)
+   331→            self.emit(LOAD_CONST, self.const(cobj))
+   332→            self.emit(MAKE_FUNCTION, ("<lambda>", tuple(node.params), False))
+   333→        else:
+   334→            raise AILangRuntimeError(f"expresión no compilable: {type(node).__name__}")
+   335→
+   336→
+   337→def _truthy(v: Any) -> bool:
+   338→    if v is None or v is False:
+   339→        return False
+   340→    if isinstance(v, (int, float)) and not isinstance(v, bool) and v == 0:
+   341→        return False
+   342→    if isinstance(v, str) and v == "":
+   343→        return False
+   344→    if isinstance(v, (list, dict)) and len(v) == 0:
+   345→        return False
+   346→    return True
+   347→
+   348→
+   349→def _binary(op: str, a: Any, b: Any) -> Any:
+   350→    if op == "+":
+   351→        if isinstance(a, str) or isinstance(b, str):
+   352→            return str(a) + str(b)
+   353→        return a + b
+   354→    ops = {
+   355→        "-": lambda x, y: x - y,
+   356→        "*": lambda x, y: x * y,
+   357→        "/": lambda x, y: x / y,
+   358→        "%": lambda x, y: x % y,
+   359→        "==": lambda x, y: x == y,
+   360→        "!=": lambda x, y: x != y,
+   361→        "<": lambda x, y: x < y,
+   362→        "<=": lambda x, y: x <= y,
+   363→        ">": lambda x, y: x > y,
+   364→        ">=": lambda x, y: x >= y,
+   365→        "and": lambda x, y: y if _truthy(x) else x,
+   366→        "or": lambda x, y: x if _truthy(x) else y,
+   367→    }
+   368→    if op not in ops:
+   369→        raise AILangRuntimeError(f"op {op}")
+   370→    return ops[op](a, b)
+   371→
+   372→
+   373→class VM:
+   374→    def __init__(
+   375→        self,
+   376→        builtins: Optional[Dict[str, Any]] = None,
+   377→        module_path: Optional[List[str]] = None,
+   378→    ):
+   379→        self.globals: Dict[str, Any] = {}
+   380→        if builtins:
+   381→            self.globals.update(builtins)
+   382→        self.module_path = list(module_path or [".", "stdlib"])
+   383→        self._module_cache: Dict[str, Any] = {}
+   384→        try:
+   385→            from ailang.lang.stdlib import builtin_modules
+   386→            self._builtin_mods = builtin_modules()
+   387→        except Exception:
+   388→            self._builtin_mods = {}
+   389→
+   390→    def load_module(self, name: str) -> Any:
+   391→        if name in self._module_cache:
+   392→            return self._module_cache[name]
+   393→        if name in self._builtin_mods:
+   394→            mod = self._builtin_mods[name]
+   395→            # wrap Module from stdlib as VMModule-compatible
+   396→            exports = getattr(mod, "_exports", None)
+   397→            if exports is not None:
+   398→                vmmod = VMModule(name, dict(exports))
+   399→            else:
+   400→                vmmod = mod
+   401→            self._module_cache[name] = vmmod
+   402→            return vmmod
+   403→        rel = name.replace(".", "/") + ".ailang"
+   404→        for root in self.module_path:
+   405→            candidate = Path(root) / rel
+   406→            if candidate.is_file():
+   407→                text = candidate.read_text(encoding="utf-8")
+   408→                code = Compiler().compile_program(parse(text))
+   409→                # run in fresh locals; export names
+   410→                saved = dict(self.globals)
+   411→                result_locals: Dict[str, Any] = {}
+   412→                # merge: execute module with empty locals using same globals builtins
+   413→                mod_locals = self._run(code, {}, capture_locals=True)
+   414→                exports = {
+   415→                    k: v for k, v in mod_locals.items()
+   416→                    if not k.startswith("__")
+   417→                }
+   418→                vmmod = VMModule(name, exports)
+   419→                self._module_cache[name] = vmmod
+   420→                return vmmod
+   421→        raise AILangRuntimeError(f"módulo no encontrado: {name}")
+   422→
+   423→    def run_code(self, code: CodeObject, locals_: Optional[Dict[str, Any]] = None) -> Any:
+   424→        return self._run(code, locals_ or {}, capture_locals=False)
+   425→
+   426→    def _run(
+   427→        self,
+   428→        code: CodeObject,
+   429→        names_local: Dict[str, Any],
+   430→        *,
+   431→        capture_locals: bool = False,
+   432→    ) -> Any:
+   433→        stack: List[Any] = []
+   434→        ip = 0
+   435→        bc = code.bytecode
+   436→        # (handler_ip, catch_name, stack_size)
+   437→        handlers: List[Tuple[int, str, int]] = []
+   438→
+   439→        def resolve_name(n: str) -> Any:
+   440→            if n in names_local:
+   441→                return names_local[n]
+   442→            if n in self.globals:
+   443→                return self.globals[n]
+   444→            raise AILangRuntimeError(f"nombre no definido: {n}")
+   445→
+   446→        def store_name(n: str, val: Any) -> None:
+   447→            if n in names_local:
+   448→                names_local[n] = val
+   449→            elif n in self.globals and n not in names_local:
+   450→                # prefer local frame for module scripts
+   451→                names_local[n] = val
+   452→            else:
+   453→                names_local[n] = val
+   454→
+   455→        def call_vm_func(fn: VMFunction, args: list, self_obj=None, defining=None):
+   456→            if len(args) != len(fn.params):
+   457→                raise AILangRuntimeError(
+   458→                    f"{fn.code.name} espera {len(fn.params)} args, recibió {len(args)}"
+   459→                )
+   460→            local = dict(fn.closure)
+   461→            local.update({p: a for p, a in zip(fn.params, args)})
+   462→            if self_obj is not None:
+   463→                local["self"] = self_obj
+   464→                owner = defining or (self_obj.cls if isinstance(self_obj, VMInstance) else None)
+   465→                if isinstance(self_obj, VMInstance) and owner is not None:
+   466→                    local["super"] = SuperProxy(self_obj, owner)
+   467→            try:
+   468→                return self._run(fn.code, local)
+   469→            except AILangRuntimeError as exc:
+   470→                raise exc.push(fn.code.name or "<fn>") from None
+   471→
+   472→        while ip < len(bc):
+   473→            op, arg = bc[ip]
+   474→            ip += 1
+   475→            if op == LOAD_CONST:
+   476→                stack.append(code.constants[arg])
+   477→            elif op == LOAD_NAME:
+   478→                try:
+   479→                    stack.append(resolve_name(code.names[arg]))
+   480→                except AILangRuntimeError as exc:
+   481→                    if handlers:
+   482→                        handler_ip, catch_name, sp = handlers.pop()
+   483→                        del stack[sp:]
+   484→                        stack.append(getattr(exc, "message", None) or str(exc))
+   485→                        ip = handler_ip
+   486→                    else:
+   487→                        raise
+   488→            elif op == DEFINE_NAME:
+   489→                n = code.names[arg]
+   490→                val = stack.pop()
+   491→                names_local[n] = val
+   492→                # Recursión: la función debe verse a sí misma en el cierre
+   493→                if isinstance(val, VMFunction):
+   494→                    val.closure[n] = val
+   495→                    self.globals[n] = val
+   496→            elif op == STORE_NAME:
+   497→                store_name(code.names[arg], stack.pop())
+   498→            elif op == BINARY_OP:
+   499→                b, a = stack.pop(), stack.pop()
+   500→                stack.append(_binary(arg, a, b))
+   501→            elif op == UNARY_OP:
+   502→                a = stack.pop()
+   503→                if arg == "-":
+   504→                    stack.append(-a)
+   505→                elif arg == "not":
+   506→                    stack.append(not _truthy(a))
+   507→                else:
+   508→                    stack.append(+a)
+   509→            elif op == CALL:
+   510→                argc = arg
+   511→                args = [stack.pop() for _ in range(argc)][::-1]
+   512→                fn = stack.pop()
+   513→                try:
+   514→                    if isinstance(fn, VMClass):
+   515→                        inst = VMInstance(fn)
+   516→                        init, owner = fn.lookup("init")
+   517→                        if init is not None:
+   518→                            call_vm_func(init, args, self_obj=inst, defining=owner)
+   519→                        stack.append(inst)
+   520→                    elif isinstance(fn, VMBoundMethod):
+   521→                        stack.append(
+   522→                            call_vm_func(
+   523→                                fn.func, args, self_obj=fn.instance, defining=fn.defining
+   524→                            )
+   525→                        )
+   526→                    elif isinstance(fn, VMFunction):
+   527→                        stack.append(call_vm_func(fn, args))
+   528→                    elif callable(fn):
+   529→                        stack.append(fn(*args))
+   530→                    else:
+   531→                        raise AILangRuntimeError(f"no invocable: {fn!r}")
+   532→                except AILangRuntimeError as exc:
+   533→                    if handlers:
+   534→                        handler_ip, catch_name, sp = handlers.pop()
+   535→                        del stack[sp:]
+   536→                        stack.append(getattr(exc, "message", None) or str(exc))
+   537→                        ip = handler_ip
+   538→                    else:
+   539→                        raise
+   540→            elif op == RETURN:
+   541→                ret = stack.pop() if stack else None
+   542→                if capture_locals:
+   543→                    names_local["__return__"] = ret
+   544→                    return names_local
+   545→                return ret
+   546→            elif op == JUMP:
+   547→                ip = arg
+   548→            elif op == JUMP_IF_FALSE:
+   549→                if not _truthy(stack.pop()):
+   550→                    ip = arg
+   551→            elif op == JUMP_IF_TRUE:
+   552→                if _truthy(stack.pop()):
+   553→                    ip = arg
+   554→            elif op == POP:
+   555→                if stack:
+   556→                    stack.pop()
+   557→            elif op == BUILD_LIST:
+   558→                stack.append([stack.pop() for _ in range(arg)][::-1])
+   559→            elif op == BUILD_DICT:
+   560→                d = {}
+   561→                for _ in range(arg):
+   562→                    v, k = stack.pop(), stack.pop()
+   563→                    d[k] = v
+   564→                stack.append(d)
+   565→            elif op == GET_ITEM:
+   566→                idx, base = stack.pop(), stack.pop()
+   567→                stack.append(base[idx])
+   568→            elif op == MAKE_FUNCTION:
+   569→                name, params, is_method = arg
+   570→                cobj = stack.pop()
+   571→                clos = dict(self.globals)
+   572→                clos.update(names_local)
+   573→                stack.append(VMFunction(cobj, params, clos, is_method=is_method))
+   574→            elif op == MAKE_CLASS:
+   575→                cls_name, base_name, method_names = arg
+   576→                methods = {}
+   577→                # methods pushed in order; top is last method
+   578→                for mname in reversed(method_names):
+   579→                    fn = stack.pop()
+   580→                    if not isinstance(fn, VMFunction):
+   581→                        raise AILangRuntimeError("MAKE_CLASS espera funciones")
+   582→                    methods[mname] = fn
+   583→                base = None
+   584→                if base_name:
+   585→                    base_obj = resolve_name(base_name)
+   586→                    if not isinstance(base_obj, VMClass):
+   587→                        raise AILangRuntimeError(f"extends requiere clase: {base_name}")
+   588→                    base = base_obj
+   589→                stack.append(VMClass(cls_name, base, methods))
+   590→            elif op == IMPORT_MODULE:
+   591→                mod_name, alias = arg
+   592→                mod = self.load_module(mod_name)
+   593→                bind = alias or mod_name.split(".")[-1]
+   594→                names_local[bind] = mod
+   595→            elif op == LOAD_ATTR:
+   596→                obj = stack.pop()
+   597→                attr = code.names[arg]
+   598→                if isinstance(obj, VMInstance):
+   599→                    if attr in obj.fields:
+   600→                        stack.append(obj.fields[attr])
+   601→                    else:
+   602→                        meth, owner = obj.cls.lookup(attr)
+   603→                        if meth is None or owner is None:
+   604→                            raise AILangRuntimeError(
+   605→                                f"'{obj.cls.name}' no tiene '{attr}'"
+   606→                            )
+   607→                        stack.append(VMBoundMethod(obj, meth, owner))
+   608→                elif isinstance(obj, SuperProxy):
+   609→                    base = obj.start_cls.base
+   610→                    found = None
+   611→                    owner = None
+   612→                    while base is not None:
+   613→                        if attr in base.methods:
+   614→                            found = base.methods[attr]
+   615→                            owner = base
+   616→                            break
+   617→                        base = base.base
+   618→                    if found is None or owner is None:
+   619→                        raise AILangRuntimeError(f"super no tiene '{attr}'")
+   620→                    stack.append(VMBoundMethod(obj.instance, found, owner))
+   621→                elif isinstance(obj, VMModule):
+   622→                    stack.append(getattr(obj, attr))
+   623→                elif isinstance(obj, VMClass):
+   624→                    meth, owner = obj.lookup(attr)
+   625→                    stack.append(meth)
+   626→                elif hasattr(obj, attr):
+   627→                    stack.append(getattr(obj, attr))
+   628→                else:
+   629→                    # stdlib Module object
+   630→                    try:
+   631→                        stack.append(getattr(obj, attr))
+   632→                    except AttributeError:
+   633→                        raise AILangRuntimeError(f"atributo '{attr}' no encontrado") from None
+   634→            elif op == STORE_ATTR:
+   635→                val = stack.pop()
+   636→                obj = stack.pop()
+   637→                attr = code.names[arg]
+   638→                if isinstance(obj, VMInstance):
+   639→                    obj.fields[attr] = val
+   640→                elif isinstance(obj, dict):
+   641→                    obj[attr] = val
+   642→                else:
+   643→                    setattr(obj, attr, val)
+   644→            elif op == SETUP_CATCH:
+   645→                # arg = (handler_ip, catch_name)
+   646→                handler_ip, catch_name = arg
+   647→                handlers.append((handler_ip, catch_name, len(stack)))
+   648→            elif op == POP_CATCH:
+   649→                if handlers:
+   650→                    handlers.pop()
+   651→            elif op == THROW:
+   652→                val = stack.pop() if stack else None
+   653→                if handlers:
+   654→                    handler_ip, catch_name, sp = handlers.pop()
+   655→                    # unwind stack to try entry
+   656→                    del stack[sp:]
+   657→                    stack.append(val)
+   658→                    ip = handler_ip
+   659→                else:
+   660→                    raise AILangRuntimeError(str(val))
+   661→            else:
+   662→                raise AILangRuntimeError(f"opcode desconocido {op}")
+   663→
+   664→        if capture_locals:
+   665→            return names_local
+   666→        return stack[-1] if stack else None
+   667→
+   668→
+   669→def compile_source(source: str) -> CodeObject:
+   670→    return Compiler().compile_program(parse(source))
+   671→
+   672→
+   673→def run_vm(
+   674→    source: str,
+   675→    *,
+   676→    builtins: Optional[Dict[str, Any]] = None,
+   677→    module_path: Optional[List[str]] = None,
+   678→) -> Any:
+   679→    code = compile_source(source)
+   680→    default_builtins = {
+   681→        "print": print,
+   682→        "len": len,
+   683→        "str": str,
+   684→        "int": int,
+   685→        "float": float,
+   686→        "range": lambda *a: list(range(*a)),
+   687→        "true": True,
+   688→        "false": False,
+   689→        "null": None,
+   690→    }
+   691→    if builtins:
+   692→        default_builtins.update(builtins)
+   693→    vm = VM(builtins=default_builtins, module_path=module_path)
+   694→    # Gramática unificada: brain siempre disponible si el módulo existe
+   695→    try:
+   696→        vm.globals["brain"] = vm.load_module("brain")
+   697→    except Exception:
+   698→        pass
+   699→    return vm.run_code(code)
+   700→

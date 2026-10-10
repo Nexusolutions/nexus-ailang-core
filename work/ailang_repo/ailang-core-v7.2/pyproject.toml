@@ -1,14 +1,14 @@
 [project]
 name = "ailang-core"
-version = "7.1.0"
-description = "AILang-Core: formal IR stack, cognitive DSL, reliable transport"
+version = "5.2.0"
+description = "AILang-Core: lenguaje + IR cognitivo + runtime verificado (FASE 0 + FASE A + B + C completados)"
 authors = [{ name = "Enrique Jimenez García" }]
 requires-python = ">=3.10"
 dependencies = ["numpy"]
 
 [project.optional-dependencies]
 crypto = ["cryptography"]
-postgres = ["psycopg[binary]"]
+postgres = ["psycopg[binary]", "psycopg-pool"]
 
 [build-system]
 requires = ["setuptools>=61"]

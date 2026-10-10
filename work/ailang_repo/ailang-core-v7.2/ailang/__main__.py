@@ -1,9 +1,14 @@
-"""python -m ailang — CLI v2.0 (Nivel B)."""
+"""python -m ailang — CLI principal.
+
+La versión vive en ailang.versions (FASE 1 del prompt maestro).
+"""
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
+
+from ailang.versions import __version__
 
 
 def main(argv=None):
@@ -81,7 +86,8 @@ def main(argv=None):
         print(docgen_file(raw[1], out))
         return 0
 
-    p = argparse.ArgumentParser(prog="python -m ailang", description="AILang v5.0")
+    p = argparse.ArgumentParser(prog="python -m ailang",
+                                description=f"AILang {__version__}")
     p.add_argument("file", nargs="?", help="Archivo .ailang a ejecutar")
     p.add_argument("-c", "--cmd", help="Ejecutar programa en línea")
     p.add_argument("--repl", action="store_true")
@@ -97,7 +103,6 @@ def main(argv=None):
     args = p.parse_args(argv)
 
     if args.version:
-        from ailang import __version__
         print(f"AILang {__version__}")
         return 0
 
