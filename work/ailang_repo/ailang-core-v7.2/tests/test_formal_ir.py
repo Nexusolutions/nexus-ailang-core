@@ -12,7 +12,7 @@ from ailang.ir.security import SecurityIR, PolicyRule
 from ailang.ir.unified import UnifiedIR
 from ailang.ir.agent import AgentIR, AgentStep, AgentStepKind
 from ailang.ir.task import TaskIR, TaskNode, TaskStatus
-from ailang.compiler.pipeline import compile_source
+from ailang.cognitive.dsl import compile_cognitive as compile_source
 from ailang.storage.sqlite_backend import SQLiteStorage
 from ailang.storage.base import DocumentRecord, ChunkRecord
 from ailang.hardware.cpu import CPUBackend
@@ -89,17 +89,20 @@ class TestStorageHardware(unittest.TestCase):
 
 class TestBridge(unittest.TestCase):
     def test_execute_on_monolith(self):
+        # P1-1: importar vía ailang.cognitive (fachada modular) en lugar de
+        # importar ailang_core directamente. Si ailang.cognitive no puede
+        # resolver el engine (porque ailang_core no esté en path), se salta.
         try:
-            import ailang_core as core
+            from ailang.cognitive import CognitiveBrainStore, CognitiveBrainEngine
         except ImportError:
-            self.skipTest("monolith not on path")
+            self.skipTest("ailang.cognitive no disponible (ailang_core no en path)")
         src = """purge_after(20ms)
 brain.ingest source="repo" path="Projects/A.md" content="AILang hybrid retrieval"
 brain.query text="hybrid" top_k=2
 """
         uir = compile_source(src, capabilities=["knowledge.read", "knowledge.write"])
-        store = core.CognitiveBrainStore(":memory:", tenant_id="formal")
-        engine = core.CognitiveBrainEngine(store)
+        store = CognitiveBrainStore(":memory:", tenant_id="formal")
+        engine = CognitiveBrainEngine(store)
         self.addCleanup(store.close)
         out = execute_unified(uir, engine)
         self.assertEqual(len(out), 2)

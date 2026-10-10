@@ -13,6 +13,9 @@ from ailang.versions import __version__
 
 def main(argv=None):
     raw = list(argv) if argv is not None else sys.argv[1:]
+    if raw and raw[0] == "doctor":
+        from ailang.doctor import run_doctor
+        return run_doctor()
     if raw and raw[0] == "pkg":
         from ailang.pkg import main as pkg_main
         return pkg_main(raw[1:])
@@ -100,7 +103,15 @@ def main(argv=None):
     p.add_argument("--bp", action="append", type=int, default=[], help="Breakpoint línea (repetible)")
     p.add_argument("--agent", metavar="GOAL", help="Ejecutar agente demo con goal")
     p.add_argument("--dap", action="store_true", help="Debug Adapter Protocol (stdio)")
+    p.add_argument("--allow", action="append", default=[], metavar="CAP",
+                   help="Conceder capability (repetible, ej: filesystem.read)")
+    p.add_argument("--deny", action="append", default=[], metavar="CAP",
+                   help="Denegar capability explícitamente (repetible)")
     args = p.parse_args(argv)
+
+    # P3-9: configurar capability context
+    from ailang.runtime.capabilities import parse_cli_capabilities, set_default_context
+    set_default_context(parse_cli_capabilities(args.allow, args.deny))
 
     if args.version:
         print(f"AILang {__version__}")

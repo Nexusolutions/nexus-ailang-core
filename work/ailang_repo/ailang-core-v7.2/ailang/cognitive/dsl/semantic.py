@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple
 
-from ailang.compiler.parser import ASTModule
+from ailang.cognitive.dsl.parser import ASTModule
 from ailang.ir.cognitive import (
     CognitiveIR, CognitiveInstruction, CognitiveOp, OP_CAPABILITIES,
 )

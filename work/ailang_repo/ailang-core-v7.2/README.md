@@ -1,35 +1,55 @@
-# AILang 5.2.0
+# AILang 5.3.0
 
 Lenguaje de programación con runtime cognitivo. La versión vive en `ailang/versions.py`
 (FASE 1 del prompt maestro: 7 constantes separadas — LANGUAGE / RUNTIME / BYTECODE / IR / ABI / STDLIB / PACKAGE_FORMAT).
 
 ```bash
 python -m ailang file.ailang
-python -m ailang bench
-python -m ailang docgen file.ailang
-python -m ailang --dap
-python -m ailang --lsp
+python -m ailang file.ailang --allow filesystem.read --allow ai.query
+python -m ailang --repl
+python -m ailang --vm file.ailang
+python -m ailang doctor
 python -m ailang --version
+python -m ailang bench
+python -m ailang fmt file.ailang
+python -m ailang lint file.ailang
+python -m ailang --lsp
+python -m ailang --dap
 ```
 
-### Estado del proyecto (post FASE 0 + FASE A + B + C)
+### Estado del proyecto (post FASE 0 + A/B/C + P1/P2/P3)
 
-- ✅ Auditoría completa (`AUDIT_REPORT.md`).
-- ✅ Roadmap P0-P4 (`ROADMAP.md`).
-- ✅ Matriz de conformidad (`CONFORMANCE_MATRIX.md`).
-- ✅ P0 quirúrgicos: `re_mod.search`, `PersistentOutbox.list_pending`/`purge_dead`,
+- ✅ Auditoría completa (`AUDIT_REPORT.md`, `ROADMAP.md`, `CONFORMANCE_MATRIX.md`).
+- ✅ P0 quirúrgicos (FASE A): `re_mod.search`, `PersistentOutbox.list_pending`/`purge_dead`,
   debugger con pausa real, firma Ed25519 del bytecode (formato v7).
-- ✅ FASE 1: versionado unificado en `ailang/versions.py`.
-- ✅ FASE C: VM conformance — closures mutables (Cell upvalues), generadores
-  (yield + GeneratorState), enum/interface/record/InterpolatedString en VM,
-  async/await event loop cooperativo (VMScheduler + VMFuture + VMChannel).
-- ✅ Conformance suite: 134 tests (109 originales + 25 nuevos de parity interp↔VM).
-- 🚧 P1: partitionar monolito `ailang_core.py`, eliminar frontend duplicado `ailang/compiler/`.
-- 🚧 P2: tooling (LSP/DAP completos, formatter desde AST, linter con reglas).
-- 🚧 P3: HIR/MIR/AIR pipeline, effect checker, capability enforcement en runtime.
+- ✅ Versionado unificado (FASE B): `ailang/versions.py` con 7 constantes separadas.
+- ✅ VM conformance (FASE C): closures mutables, generadores, enum/interface/record/
+  InterpolatedString en VM, async/await event loop cooperativo.
+- ✅ P1: partitionar monolito (`ailang/cognitive/` fachada), eliminar frontend duplicado
+  (`ailang/compiler/` migrado a `ailang/cognitive/dsl/`), tests embebidos a `tests/`.
+- ✅ P2: LSP ampliado (references/rename/documentSymbol/semanticTokens/signatureHelp),
+  formatter AST idempotente, linter con reglas (E001/W001/W002/W003/W005), `ailang doctor`.
+- ✅ P3: jerarquía `AILangError` completa, effect checker, capability enforcement con
+  `--allow`/`--deny` CLI, pipeline HIR/MIR/AIR funcional.
+- ✅ Conformance suite: 149 tests (109 originales + 25 conformance VM parity + 15 ailang_core).
 - 🚧 P4: Native/LLVM, WASM, GPU/NPU/TPU reales, cryptography API.
 
-### Ejemplos (Nivel E)
+### Arquitectura
+
+```
+Source (.ailang) → Lexer → Parser → AST
+       ↓
+Semantic: typecheck + effects + capabilities
+       ↓
+HIR → MIR (SSA-lite + CFG + optimizaciones) → AIR (instrucciones tipadas)
+       ↓
+┌── Interpreter (tree-walking)
+├── VM (stack-based)
+├── Bytecode .ailc (firmado Ed25519, formato v7)
+└── (futuro) Native LLVM / WASM
+```
+
+### Ejemplos
 
 ```ailang
 record Point { x, y }

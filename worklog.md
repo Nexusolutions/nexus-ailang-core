@@ -79,3 +79,29 @@ Stage Summary:
 - Hallazgos P0 resueltos: 11/11 (P0-1 a P0-11).
 - Limitaciones conocidas: 2 (documentadas para P3-1 HIR/MIR/AIR).
 - Próximos pasos sugeridos: P1 (partitionar monolito ailang_core.py, eliminar frontend duplicado ailang/compiler/), P2 (tooling: LSP/DAP completos, formatter desde AST, linter con reglas), P3 (HIR/MIR/AIR pipeline).
+
+---
+Task ID: EXEC-2
+Agent: Super Z (orchestrator)
+Task: Continuar con próximos pasos sugeridos: P1 (arquitectura), P2 (tooling), P3 (HIR/MIR/AIR)
+
+Work Log:
+- P1-1: Creado ailang/cognitive/ como paquete fachada. brain.py y runtime_bridge.py ya no importan ailang_core directamente.
+- P1-3 + P1-4: Eliminado ailang/compiler/ (frontend duplicado v7.1 legacy). Migrado a ailang/cognitive/dsl/ con compile_cognitive (renombrado para evitar colisión con lang/vm.compile_source).
+- P1-5: Tests embebidos del monolito (44 tests) migrados a tests/test_ailang_core.py.
+- P2-1: LSP ampliado con references/rename/documentSymbol/semanticTokens/signatureHelp/codeAction. Helpers _extract_symbols, _extract_semantic_tokens, _signature_help.
+- P2-4: Formatter AST-based idempotente: format_ast(source) parsea → emite desde AST. Verificado idempotente.
+- P2-5: Linter con 6 reglas: E001 (unused vars), E002 (unused imports), W001 (shadowing), W002 (unreachable code), W003 (missing return), W005 (empty blocks).
+- P2-15: ailang doctor diagnostica 11 componentes. 11/11 OK.
+- P3-6: Jerarquía AILangError completa con 16 subclases + formato visual Rust-style con caret indicator.
+- P3-8: Effect checker en ailang/semantic/effects.py. Effects: pure/io/filesystem/network/ai/hardware/process/unsafe.
+- P3-9: Capability enforcement en ailang/runtime/capabilities.py. CapabilityContext con allow/deny/wildcards/audit_log. CLI flags --allow/--deny.
+- P3-1: Pipeline HIR/MIR/AIR funcional end-to-end (ailang/ir/{hir,mir,air,pipeline}.py). Optimizaciones: constant_fold, dead_code_elimination.
+- Versión bumped a 5.3.0. CHANGELOG actualizado con detalle P1/P2/P3.
+
+Stage Summary:
+- Tests totales: 149 pytest + 44 embebidos = 193. 100% verde.
+- ailang doctor: 11/11 componentes OK.
+- Nuevos módulos: ailang/cognitive/, ailang/cognitive/dsl/, ailang/semantic/, ailang/runtime/, ailang/ir/hir.py, mir.py, air.py, pipeline.py, ailang/doctor.py.
+- Eliminados: ailang/compiler/ (migrado a cognitive/dsl/).
+- Próximos pasos sugeridos: P4 (Native/LLVM, WASM, GPU/NPU/TPU reales, cryptography API) — son tareas experimentales post-1.0.
