@@ -1,0 +1,171 @@
+{
+  "scopeName": "source.ailang",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#functions" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.ailang",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.ailang",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "captures": {
+            "0": { "name": "punctuation.definition.comment.ailang" }
+          }
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.ailang",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.ailang",
+              "match": "\\\\."
+            },
+            {
+              "name": "string.interpolated.ailang",
+              "match": "\\$\\{[^}]+\\}",
+              "captures": {
+                "0": { "name": "meta.interpolation.ailang" }
+              }
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.ailang",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.ailang",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.ailang",
+          "match": "\\b[0-9]+\\.[0-9]+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.ailang",
+          "match": "\\b[0-9]+\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.ailang",
+          "match": "\\b(if|else|while|for|in|return|break|continue|match|case)\\b"
+        },
+        {
+          "name": "keyword.control.async.ailang",
+          "match": "\\b(async|await|spawn|yield)\\b"
+        },
+        {
+          "name": "keyword.control.exception.ailang",
+          "match": "\\b(try|catch|throw)\\b"
+        },
+        {
+          "name": "keyword.declaration.ailang",
+          "match": "\\b(let|const|fn|class|extends|enum|interface|record|import|as|implements)\\b"
+        },
+        {
+          "name": "keyword.operator.ailang",
+          "match": "\\b(and|or|not)\\b"
+        },
+        {
+          "name": "keyword.other.ailang",
+          "match": "\\b(purge_after|self|super)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.ailang",
+          "match": "\\b(int|float|bool|string|null|any|List|Dict|Tuple|Set|Function|Future|Generator|Channel|Tensor|Optional|Union)\\b"
+        },
+        {
+          "name": "support.type.ailang",
+          "match": "(?<=:)[A-Z][a-zA-Z0-9_]*(\\[[a-zA-Z0-9_, \\[\\]]+\\])?"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.ailang",
+          "match": "\\b(fn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.ailang" },
+            "2": { "name": "entity.name.function.ailang" }
+          }
+        },
+        {
+          "name": "support.function.ailang",
+          "match": "\\b(print|len|str|int|float|range|type|isinstance|implements|channel)\\b"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.ailang",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.ailang",
+          "match": "\\bnull\\b"
+        },
+        {
+          "name": "variable.language.ailang",
+          "match": "\\b(self|super)\\b"
+        },
+        {
+          "name": "entity.name.class.ailang",
+          "match": "\\b(class)\\s+([A-Z][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.ailang" },
+            "2": { "name": "entity.name.class.ailang" }
+          }
+        },
+        {
+          "name": "entity.name.enum.ailang",
+          "match": "\\b(enum)\\s+([A-Z][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.ailang" },
+            "2": { "name": "entity.name.enum.ailang" }
+          }
+        },
+        {
+          "name": "entity.name.type.ailang",
+          "match": "\\b(record|interface)\\s+([A-Z][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.ailang" },
+            "2": { "name": "entity.name.type.ailang" }
+          }
+        }
+      ]
+    }
+  }
+}

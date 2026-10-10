@@ -1,0 +1,32 @@
+[project]
+name = "nexus-ailang-core"
+version = "1.1.0"
+description = "Nexus AILang-Core: lenguaje de programación con runtime cognitivo, capability enforcement, pipeline HIR/MIR/AIR, y backends LLVM/WASM"
+authors = [{ name = "Enrique Jimenez Garcia" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+crypto = ["cryptography"]
+postgres = ["psycopg[binary]", "psycopg-pool"]
+llvm = ["llvmlite"]
+testing = ["hypothesis", "pytest", "pytest-cov"]
+all = ["cryptography", "psycopg[binary]", "psycopg-pool", "llvmlite", "hypothesis", "pytest", "pytest-cov"]
+
+[project.urls]
+Homepage = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core"
+Repository = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core"
+Documentation = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core/tree/main/docs"
+Issues = "https://github.com/EnriqueJimenezGarcia/nexus-ailang-core/issues"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ailang*"]
+
+[tool.setuptools]
+py-modules = ["ailang_core"]
