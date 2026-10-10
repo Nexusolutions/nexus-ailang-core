@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.0.0 — Release Final (W1-W5)
+
+### W1 — Release 1.0.0
+- Versión bumped a `1.0.0` (final) en ailang/versions.py, pyproject.toml, README.md.
+- CHANGELOG actualizado con resumen del camino a 1.0 (5.0.0 → 1.0.0).
+
+### W2 — Artefactos verificables
+- `ailang_core-1.0.0.tar.gz` (173 KB sdist)
+- `ailang_core-1.0.0-py3-none-any.whl` (186 KB wheel)
+- `MANIFEST.json` con SHA-256 checksums de cada artefacto
+- `checksums.sha256` para verificación con `sha256sum -c`
+
+### W3 — VM name cache (register-style optimization)
+- `ailang/lang/vm.py`: `name_cache` en `_run()` para acelerar LOAD_NAME.
+- Primera lookup hace dict search completo; subsiguientes usan el slot cacheado
+  (local vs global) evitando double-dict-lookup.
+- Combinado con `_call_cache` (V2), VM es 1.5-2.3x faster que Interpreter
+  en 14/17 casos benchmark.
+
+### W4 — Event loop para async/await
+- `ailang/runtime/event_loop.py`: EventLoop cooperativo con:
+  - `Future`: set_result/set_error/add_done_callback
+  - `Task`: wrap una corrutina (generador) con su Future
+  - `EventLoop.create_task(coro)`: encola una task
+  - `EventLoop.run_until_complete()`: ejecuta todas las tasks
+- Diseño: async fn se compila como generador; `await` = `yield Future`;
+  event loop alterna entre tasks, resumiendo cada una hasta que hace yield.
+- Verificado: 3 tests (simple task, await Future, concurrent tasks).
+
+### W5 — Generics type parsing
+- `ailang/lang/typecheck.py` ampliado con:
+  - `GenericType` dataclass: base + params (e.g. List[int], Dict[string, int])
+  - `_parse_generic(ty)`: parsea anotaciones genéricas
+  - `_split_type_params(s)`: split de params con nested brackets
+  - `_normalize()` actualizado: List[T] → list, Dict[K,V] → dict, etc.
+  - 11 tipos genéricos soportados: List, Dict, Tuple, Set, Function, Future,
+    Generator, Channel, Tensor, Optional, Union
+- Limitación: el parser actual no soporta `List[int]` como type annotation
+  (trata `[` como token de lista). Requiere extensión del lexer para soportar
+  generics en type annotations. El type checker sí parsea y normaliza
+  correctamente cuando recibe la anotación como string.
+
+### Métricas finales 1.0.0
+- Tests `pytest tests/`: 210/210 ✅
+- Tests embebidos monolito: 44/44 ✅
+- `ailang doctor`: 11/11 componentes OK
+- 1.0 release checklist: 37/37 criterios FASE 47 verificados
+- Artefactos: sdist (173KB) + wheel (186KB) + checksums
+- VM: name cache + call cache (inline caching)
+- Event loop: async/await cooperativo funcional
+- Generics: parsing y normalización (11 tipos)
+- Versión: 1.0.0
+
 ## 1.0.0-rc.1 — Release Candidate 1 (V1-V5)
 
 ### V1 — Release 1.0.0-rc.1

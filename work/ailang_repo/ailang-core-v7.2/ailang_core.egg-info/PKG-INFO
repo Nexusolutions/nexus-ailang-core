@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: ailang-core
+Version: 1.0.0
+Summary: AILang-Core: lenguaje + IR cognitivo + runtime verificado (FASE 0 + A/B/C + P1/P2/P3 + S1-S5 completados)
+Author: Enrique Jimenez García
+Requires-Python: >=3.10
+License-File: LICENSE
+Requires-Dist: numpy
+Provides-Extra: crypto
+Requires-Dist: cryptography; extra == "crypto"
+Provides-Extra: postgres
+Requires-Dist: psycopg[binary]; extra == "postgres"
+Requires-Dist: psycopg-pool; extra == "postgres"
+Dynamic: license-file

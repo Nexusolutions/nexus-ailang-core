@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "artifacts": {
+    "ailang_core-1.0.0-py3-none-any.whl": {
+      "sha256": "0f60c45722eaaca23f28f8f3c32a43d3097f11fa06e34bad8348bd5a22b7e5ad",
+      "size": 185594
+    },
+    "ailang_core-1.0.0.tar.gz": {
+      "sha256": "059112cba24cf1886ee0d973c7f8f38fdbcd1bfe021c09f018d3de7416e1b416",
+      "size": 173430
+    }
+  }
+}

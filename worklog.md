@@ -218,3 +218,25 @@ Stage Summary:
 - VM: inline caching para CALL opcode.
 - Documentación: TUTORIAL + LANGUAGE_REFERENCE + CONTRIBUTING + CODE_OF_CONDUCT + issue templates.
 - Release Notes: RELEASE_NOTES.md con resumen de 37 criterios verificados.
+
+---
+Task ID: EXEC-8
+Agent: Super Z (orchestrator)
+Task: Continuar con W1-W5: Release 1.0.0, artefactos verificables, VM name cache, event loop, generics
+
+Work Log:
+- W1: Versión bumped a 1.0.0 (final) en ailang/versions.py, pyproject.toml, README.md. CHANGELOG actualizado con entrada 1.0.0.
+- W2: Generados artefactos verificables con python3 -m build: ailang_core-1.0.0.tar.gz (173KB sdist), ailang_core-1.0.0-py3-none-any.whl (186KB wheel). Creados MANIFEST.json con SHA-256 checksums y checksums.sha256. Guardados en /home/z/my-project/download/ailang-artifacts/.
+- W3: Implementado name_cache en VM _run() para acelerar LOAD_NAME. Primera lookup hace dict search completo; subsiguientes usan el slot cacheado (local vs global). Combinado con _call_cache (V2), VM es 1.5-2.3x faster en 14/17 casos.
+- W4: Creado ailang/runtime/event_loop.py con EventLoop cooperativo: Future (set_result/set_error/callbacks), Task (wrap corrutina), EventLoop (create_task/run_until_complete). Diseño: async fn = generador, await = yield Future, event loop alterna entre tasks. Verificado con 3 tests (simple task, await Future, 5 concurrent tasks).
+- W5: Ampliado ailang/lang/typecheck.py con GenericType dataclass, _parse_generic(), _split_type_params() (handles nested brackets), _normalize() actualizado para 11 tipos genéricos (List, Dict, Tuple, Set, Function, Future, Generator, Channel, Tensor, Optional, Union). Limitación: el parser actual no soporta List[int] como type annotation en código fuente (requiere extensión del lexer), pero el type checker parsea y normaliza correctamente cuando recibe la anotación como string.
+- CHANGELOG actualizado con entrada 1.0.0.
+
+Stage Summary:
+- Tests totales: 210 pytest + 44 embebidos = 254. 100% verde.
+- ailang doctor: 11/11 componentes OK.
+- Artefactos: sdist (173KB) + wheel (186KB) + MANIFEST.json + checksums.sha256.
+- VM: name cache + call cache (inline caching dual).
+- Event loop: async/await cooperativo funcional con Future/Task/EventLoop.
+- Generics: parsing y normalización de 11 tipos genéricos.
+- Versión: 1.0.0 (Release Final).

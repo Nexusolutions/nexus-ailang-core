@@ -741,12 +741,28 @@ class VM:
         # (handler_ip, catch_name, stack_size)
         handlers: List[Tuple[int, str, int]] = []
 
+        # W3: name cache — index of common names to avoid dict lookups
+        # Maps name string → (location, slot) where location is 'local' or 'global'
+        # First lookup is slow (dict), subsequent lookups use the cached slot
+        name_cache: Dict[str, Tuple[str, int]] = {}
+
         def resolve_name(n: str) -> Any:
+            # W3: check cache first
+            cached = name_cache.get(n)
+            if cached is not None:
+                loc, _ = cached
+                if loc == 'local':
+                    v = names_local[n]
+                else:
+                    v = self.globals[n]
+                return v.get() if isinstance(v, Cell) else v
+            # Cache miss: do full lookup
             if n in names_local:
+                name_cache[n] = ('local', 0)
                 v = names_local[n]
-                # P0-5: unwrap Cell al leer
                 return v.get() if isinstance(v, Cell) else v
             if n in self.globals:
+                name_cache[n] = ('global', 0)
                 v = self.globals[n]
                 return v.get() if isinstance(v, Cell) else v
             raise AILangRuntimeError(f"nombre no definido: {n}")

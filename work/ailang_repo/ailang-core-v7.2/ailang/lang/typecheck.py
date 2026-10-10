@@ -1,14 +1,17 @@
-"""Type checker gradual/estricto de AILang (Nivel B).
+"""Type checker gradual/estricto de AILang (Nivel B + W5 generics).
 
 - Anotaciones opcionales
 - strict=True: errores duros
 - Narrowing simple tras isinstance(x, "T")
 - Tipos de función y listas List[T] básicos
+- W5: Generics — List[T], Dict[K,V], Tuple[T...], Set[T], Future[T],
+  Generator[T], Channel[T], Function[A,B]
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
+import re as _re
 
 from ailang.lang import ast_nodes as A
 from ailang.lang.parser import parse
@@ -18,6 +21,35 @@ PRIMITIVES = {
     "null", "bool", "int", "float", "number", "string",
     "list", "dict", "function", "any", "class", "module",
 }
+
+# W5: Generic type constructors
+GENERIC_TYPES = {
+    "List", "Dict", "Tuple", "Set", "Function", "Future",
+    "Generator", "Channel", "Tensor", "Optional", "Union",
+}
+
+# W5: Parse generic type annotations like List[int], Dict[string, int]
+_GENERIC_RE = _re.compile(r'^(\w+)\[(.+)\]$')
+
+
+@dataclass
+class GenericType:
+    """W5: Tipo genérico parametrizado, e.g. List[int], Dict[string, int]."""
+    base: str  # "List", "Dict", etc.
+    params: Tuple[str, ...]  # type parameters
+
+    def __repr__(self) -> str:
+        return f"{self.base}[{', '.join(self.params)}]"
+
+    def normalize(self) -> str:
+        """Retorna el tipo base normalizado para compatibilidad."""
+        return {
+            "List": "list", "Dict": "dict", "Tuple": "list",
+            "Set": "list", "Function": "function",
+            "Future": "any", "Generator": "any",
+            "Channel": "any", "Tensor": "any",
+            "Optional": "any", "Union": "any",
+        }.get(self.base, "any")
 
 
 @dataclass
@@ -55,17 +87,64 @@ def _normalize(ty: Optional[str]) -> str:
     if not ty:
         return "any"
     t = ty.strip()
-    # List[int] -> list
-    if t.startswith("List[") or t.startswith("list["):
-        return "list"
-    if t.startswith("Dict[") or t.startswith("dict["):
-        return "dict"
+    # W5: Parse generic types (List[int], Dict[string, int], etc.)
+    m = _GENERIC_RE.match(t)
+    if m:
+        base = m.group(1)
+        # Normalize base to primitive
+        return {
+            "List": "list", "list": "list",
+            "Dict": "dict", "dict": "dict",
+            "Tuple": "list", "tuple": "list",
+            "Set": "list", "set": "list",
+            "Function": "function", "function": "function",
+            "Future": "any", "Generator": "any",
+            "Channel": "any", "Tensor": "any",
+            "Optional": "any", "Union": "any",
+        }.get(base, base.lower())
     t = t.lower()
     if t in ("num", "numeric"):
         return "number"
     if t in ("str", "text"):
         return "string"
     return t
+
+
+def _parse_generic(ty: Optional[str]) -> Optional[GenericType]:
+    """W5: Parsea una anotación de tipo genérico. Retorna GenericType o None."""
+    if not ty:
+        return None
+    t = ty.strip()
+    m = _GENERIC_RE.match(t)
+    if m:
+        base = m.group(1)
+        params_str = m.group(2)
+        # Split params by comma (handle nested brackets)
+        params = _split_type_params(params_str)
+        return GenericType(base=base, params=tuple(params))
+    return None
+
+
+def _split_type_params(s: str) -> List[str]:
+    """W5: Split type parameters, handling nested brackets."""
+    parts = []
+    depth = 0
+    current = ""
+    for c in s:
+        if c == '[':
+            depth += 1
+            current += c
+        elif c == ']':
+            depth -= 1
+            current += c
+        elif c == ',' and depth == 0:
+            parts.append(current.strip())
+            current = ""
+        else:
+            current += c
+    if current.strip():
+        parts.append(current.strip())
+    return parts
 
 
 def _compatible(got: str, expected: str) -> bool:
