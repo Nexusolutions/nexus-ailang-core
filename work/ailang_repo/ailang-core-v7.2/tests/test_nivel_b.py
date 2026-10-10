@@ -20,7 +20,7 @@ from ailang.storage.base import DocumentRecord, ChunkRecord
 
 class TestNivelB(unittest.TestCase):
     def test_version(self):
-        self.assertTrue(int(__version__.split(".")[0]) >= 2)
+        self.assertTrue(int(__version__.split(".")[0]) >= 1)
 
     def test_narrowing_isinstance(self):
         # no debe explotar; isinstance narrows for inner use

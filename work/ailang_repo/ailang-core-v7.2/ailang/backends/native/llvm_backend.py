@@ -66,28 +66,28 @@ def compile_to_llvm_ir(source: str, *, optimize: bool = False) -> str:
 def _lower_function_to_llvm(air_fn: AIRFunction, module: Any, ir: Any) -> None:
     """Lowering: AIRFunction → LLVM function.
 
-    Crea una LLVM function con signature i64 @<name>() (placeholder: sin params).
-    Para params reales, habría que declararlos con tipos LLVM.
+    V3: ahora soporta variables locales (alloca + load/store) y llamadas
+    a función (call). Control de flujo (if/while) requiere basic blocks
+    adicionales y queda como TODO.
     """
-    # Tipo de retorno i64 (placeholder)
     func_type = ir.FunctionType(ir.IntType(64), [])
     llvm_fn = ir.Function(module, func_type, name=air_fn.name)
 
-    # Crear basic block de entry
     if not air_fn.blocks:
         return
     entry_block = llvm_fn.append_basic_block("entry")
     builder = ir.IRBuilder(entry_block)
 
-    # Stack virtual: mapear opcodes AIR a instrucciones LLVM
+    # Stack virtual + locals map (V3: con alloca para variables persistentes)
     stack: List[Any] = []
     locals_map: Dict[str, Any] = {}
+    # V3: allocated slots para variables (alloca + load/store)
+    var_slots: Dict[str, Any] = {}
 
     for block in air_fn.blocks:
         for instr in block.instructions:
-            _lower_instruction(instr, builder, ir, stack, locals_map)
+            _lower_instruction(instr, builder, ir, stack, locals_map, var_slots, llvm_fn, module)
 
-    # Si no terminó con ret, añadir ret 0
     if not builder.block.is_terminated:
         builder.ret(ir.Constant(ir.IntType(64), 0))
 
@@ -101,11 +101,11 @@ def _lower_globals_to_llvm(globals_block: Any, module: Any, ir: Any) -> None:
 
     stack: List[Any] = []
     locals_map: Dict[str, Any] = {}
+    var_slots: Dict[str, Any] = {}
 
     for instr in globals_block.instructions:
-        _lower_instruction(instr, builder, ir, stack, locals_map)
+        _lower_instruction(instr, builder, ir, stack, locals_map, var_slots, main_fn, module)
 
-    # ret 0
     if not builder.block.is_terminated:
         builder.ret(ir.Constant(ir.IntType(64), 0))
 
@@ -116,11 +116,16 @@ def _lower_instruction(
     ir: Any,
     stack: List[Any],
     locals_map: Dict[str, Any],
+    var_slots: Dict[str, Any] = None,
+    current_fn: Any = None,
+    module: Any = None,
 ) -> None:
     """Lowering: AIRInstruction → LLVM IR instruction.
 
-    Solo soporta un subset; opcodes no soportados son ignorados (no-op).
+    V3: soporta LOAD_NAME/STORE_NAME con alloca/load/store, CALL con call.
     """
+    if var_slots is None:
+        var_slots = {}
     op = instr.opcode
 
     if op == LOAD_CONST:
@@ -128,9 +133,9 @@ def _lower_instruction(
         if isinstance(val, bool):
             val = int(val)
         elif isinstance(val, float):
-            val = int(val)  # LLVM IR requiere enteros por ahora
+            val = int(val)
         elif isinstance(val, str):
-            val = 0  # strings no soportados en este esqueleto
+            val = 0
         elif val is None:
             val = 0
         const = ir.Constant(ir.IntType(64), int(val))
@@ -138,17 +143,21 @@ def _lower_instruction(
 
     elif op == LOAD_NAME:
         name = instr.operands[0] if instr.operands else ""
-        if name in locals_map:
-            stack.append(locals_map[name])
+        # V3: usar alloca slot si existe, sino fallback a 0
+        if name in var_slots:
+            loaded = builder.load(var_slots[name], name=f"_{name}")
+            stack.append(loaded)
         else:
-            # Placeholder: push 0
             stack.append(ir.Constant(ir.IntType(64), 0))
 
     elif op == STORE_NAME or op == DEFINE_NAME:
-        # En LLVM IR, variables son SSA. Para simplicidad, mantener un mapping.
         if stack:
             val = stack.pop()
             name = instr.result or (instr.operands[0] if instr.operands else "_")
+            # V3: alloca + store para variables persistentes
+            if name not in var_slots:
+                var_slots[name] = builder.alloca(ir.IntType(64), name=name)
+            builder.store(val, var_slots[name])
             locals_map[name] = val
 
     elif op == BINARY_OP:
@@ -163,10 +172,56 @@ def _lower_instruction(
             result = builder.sub(a, b)
         elif op_str == "*":
             result = builder.mul(a, b)
+        elif op_str == "/":
+            # V3: signed division
+            result = builder.sdiv(a, b)
+        elif op_str == "%":
+            result = builder.srem(a, b)
+        elif op_str == "==":
+            cmp = builder.icmp_signed("==", a, b)
+            result = builder.zext(cmp, ir.IntType(64))
+        elif op_str == "!=":
+            cmp = builder.icmp_signed("!=", a, b)
+            result = builder.zext(cmp, ir.IntType(64))
+        elif op_str == "<":
+            cmp = builder.icmp_signed("<", a, b)
+            result = builder.zext(cmp, ir.IntType(64))
+        elif op_str == ">":
+            cmp = builder.icmp_signed(">", a, b)
+            result = builder.zext(cmp, ir.IntType(64))
+        elif op_str == "<=":
+            cmp = builder.icmp_signed("<=", a, b)
+            result = builder.zext(cmp, ir.IntType(64))
+        elif op_str == ">=":
+            cmp = builder.icmp_signed(">=", a, b)
+            result = builder.zext(cmp, ir.IntType(64))
         else:
-            # Op no soportado: push 0
             result = ir.Constant(ir.IntType(64), 0)
         stack.append(result)
+
+    elif op == UNARY_OP:
+        op_str = instr.operands[0] if instr.operands else "+"
+        if stack:
+            a = stack.pop()
+            if op_str == "-":
+                result = builder.sub(ir.Constant(ir.IntType(64), 0), a)
+            else:
+                result = a
+            stack.append(result)
+
+    elif op == CALL:
+        # V3: soporte básico para llamadas a función declaradas en el módulo
+        argc = int(instr.operands[0]) if instr.operands else 0
+        args = [stack.pop() for _ in range(argc)][::-1]
+        fn_name = instr.result or ""
+        # Buscar la función en el módulo LLVM
+        if module is not None and fn_name in [f.name for f in module.functions]:
+            llvm_fn = next(f for f in module.functions if f.name == fn_name)
+            result = builder.call(llvm_fn, args)
+            stack.append(result)
+        else:
+            # Fallback: push 0
+            stack.append(ir.Constant(ir.IntType(64), 0))
 
     elif op == RETURN:
         if stack:
@@ -175,7 +230,11 @@ def _lower_instruction(
         else:
             builder.ret(ir.Constant(ir.IntType(64), 0))
 
-    # Otros opcodes (CALL, JUMP, etc.) no soportados en este esqueleto
+    elif op == POP:
+        if stack:
+            stack.pop()
+
+    # Otros opcodes no soportados → ignorados (no-op)
 
 
 def compile_to_native(source: str, *, target: str = "x86_64") -> bytes:

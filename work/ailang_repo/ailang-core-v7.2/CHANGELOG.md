@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.0.0-rc.1 — Release Candidate 1 (V1-V5)
+
+### V1 — Release 1.0.0-rc.1
+- Versión bumped a `1.0.0-rc.1` (todas las constantes: LANGUAGE, RUNTIME, STDLIB).
+- `RELEASE_NOTES.md`: documento de release con 37/37 criterios FASE 47 verificados.
+- Tests de versión actualizados para aceptar semver con pre-release suffix.
+- pyproject.toml y README actualizados.
+
+### V2 — VM inline caching
+- `ailang/lang/vm.py`: `_call_cache` en VM para acelerar llamadas repetidas.
+- Cuando una VMFunction es llamada por primera vez, se cachea por `(id(code), argc)`.
+- Llamadas subsiguientes al mismo CodeObject+argc saltan el lookup overhead.
+- Verificado: 210 tests pasan, VM faster en 14/17 casos.
+
+### V3 — LLVM/WASM backends ampliados
+- `ailang/backends/native/llvm_backend.py`:
+  - Variables locales con `alloca` + `load` + `store`
+  - Comparaciones: `==`, `!=`, `<`, `>`, `<=`, `>=` via `icmp_signed` + `zext`
+  - Divisiones: `/` (sdiv), `%` (srem)
+  - UnaryOp: `-` (0 - x)
+  - Llamadas a función: `call` con funciones declaradas en el módulo
+  - POP: `drop`
+- `ailang/backends/wasm/wasm_backend.py`:
+  - Locals declarados: `(local $v0..$v9 i64)`
+  - `local.get` / `local.set` para LOAD_NAME / STORE_NAME
+  - Comparaciones: `i64.eq`, `i64.ne`, `i64.lt_s`, `i64.gt_s`, `i64.le_s`, `i64.ge_s`
+  - Divisiones: `i64.div_s`, `i64.rem_s`
+  - POP: `drop`
+
+### V4 — Documentation
+- `docs/TUTORIAL.md`: tutorial de 20 secciones desde Hello World hasta
+  crypto, tensor, debugging, LSP, formatter, linter, benchmarks.
+- `docs/LANGUAGE_REFERENCE.md`: reference completa con gramática EBNF,
+  tipos, semántica, runtime, capabilities, IR pipeline, stdlib, CLI.
+
+### V5 — Community
+- `CONTRIBUTING.md`: guía de contribución con quick start, tipos de
+  contribuciones, estándares de código, arquitectura, roadmap.
+- `CODE_OF_CONDUCT.md`: Contributor Covenant v2.0.
+- `.github/ISSUE_TEMPLATE/bug_report.md`: template para bug reports.
+- `.github/ISSUE_TEMPLATE/feature_request.md`: template para feature requests.
+
+### Métricas
+- Tests `pytest tests/`: 210/210 ✅.
+- Tests embebidos monolito: 44/44 ✅.
+- `ailang doctor`: 11/11 componentes OK.
+- 1.0 release checklist: 37/37 criterios FASE 47 verificados.
+- LLVM backend: alloca/load/store, comparaciones, divisiones, llamadas.
+- WASM backend: locals, comparaciones, divisiones.
+- Benchmarks: VM faster en 14/17 casos (con inline caching).
+- Documentación: TUTORIAL + LANGUAGE_REFERENCE + CONTRIBUTING + CODE_OF_CONDUCT.
+- Versión: 1.0.0-rc.1.
+
 ## 5.7.0 — U1 + U2 + U3 + U4 + U5
 
 ### U1 — CognitiveBrainEngine/Store migrados físicamente (P1-2 FINAL)

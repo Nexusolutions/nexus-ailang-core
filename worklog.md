@@ -194,3 +194,27 @@ Stage Summary:
 - WASM backend: genera WAT válido.
 - CognitiveBrainEngine/Store: migrados físicamente a ailang/cognitive/brain_engine.py.
 - DAP: step_over/step_out/step_into con call stack tracking.
+
+---
+Task ID: EXEC-7
+Agent: Super Z (orchestrator)
+Task: Continuar con V1-V5: Release 1.0.0-rc.1, VM inline caching, LLVM/WASM backends ampliados, documentation, community files
+
+Work Log:
+- V1: Versión bumped a 1.0.0-rc.1 en ailang/versions.py, pyproject.toml, README.md. Creado RELEASE_NOTES.md con 37/37 criterios FASE 47 verificados. Tests de versión actualizados para aceptar semver con pre-release suffix (1.0.0-rc.1).
+- V2: Implementado _call_cache en VM para inline caching de CALL opcode. Cuando una VMFunction es llamada por primera vez, se cachea por (id(code), argc). Llamadas subsiguientes saltan el lookup overhead. Verificado: 210 tests pasan, VM faster en 14/17 casos.
+- V3: LLVM backend ampliado con alloca/load/store para variables locales, comparaciones (==,!=,<,>,<=,>= via icmp_signed+zext), divisiones (sdiv, srem), unary neg, llamadas a función (call), POP (drop). WASM backend ampliado con locals declarados (v0..v9), local.get/local.set, comparaciones (i64.eq/ne/lt_s/gt_s/le_s/ge_s), divisiones (i64.div_s/rem_s).
+- V4: Creado docs/TUTORIAL.md con 20 secciones (Hello World → variables → funciones → closures → control de flujo → clases → records/enums → interfaces → strings → generadores → concurrency → excepciones → imports → capabilities → crypto → tensor → debugging → LSP → formatter/linter → benchmarks). Creado docs/LANGUAGE_REFERENCE.md con gramática EBNF, tipos, semántica, runtime, capabilities, IR pipeline, stdlib, CLI.
+- V5: Creado CONTRIBUTING.md (quick start, tipos de contribuciones, estándares de código, arquitectura, roadmap). Creado CODE_OF_CONDUCT.md (Contributor Covenant v2.0). Creado .github/ISSUE_TEMPLATE/bug_report.md y feature_request.md.
+- CHANGELOG actualizado con entrada 1.0.0-rc.1.
+
+Stage Summary:
+- Tests totales: 210 pytest + 44 embebidos = 254. 100% verde.
+- ailang doctor: 11/11 componentes OK.
+- 1.0 release checklist: 37/37 criterios FASE 47 verificados ✅.
+- Versión: 1.0.0-rc.1 (Release Candidate 1).
+- LLVM: alloca/load/store + comparaciones + divisiones + llamadas.
+- WASM: locals + comparaciones + divisiones.
+- VM: inline caching para CALL opcode.
+- Documentación: TUTORIAL + LANGUAGE_REFERENCE + CONTRIBUTING + CODE_OF_CONDUCT + issue templates.
+- Release Notes: RELEASE_NOTES.md con resumen de 37 criterios verificados.

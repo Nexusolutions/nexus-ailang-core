@@ -16,7 +16,7 @@ from ailang.profiler import profile_source
 
 class TestNivelC(unittest.TestCase):
     def test_version(self):
-        self.assertTrue(int(__version__.split(".")[0]) >= 3)
+        self.assertTrue(int(__version__.split(".")[0]) >= 1)
 
     def test_match(self):
         self.assertEqual(

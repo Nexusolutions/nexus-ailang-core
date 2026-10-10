@@ -13,7 +13,7 @@ from ailang.lang.stdlib import http_mod
 
 class TestNivelD(unittest.TestCase):
     def test_version(self):
-        self.assertTrue(int(__version__.split(".")[0]) >= 4)
+        self.assertTrue(int(__version__.split(".")[0]) >= 1)
 
     def test_enum(self):
         r = run_source("""

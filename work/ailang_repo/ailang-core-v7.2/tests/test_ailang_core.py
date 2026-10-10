@@ -58,8 +58,8 @@ class TestAILangCore(unittest.TestCase):
             decode_bytecode(bytes(blob))
 
     def test_version_is_semver(self):
-        parts = tuple(int(p) for p in __version__.split("."))
-        self.assertGreaterEqual(parts, (2, 0, 0))
+        parts = tuple(int(p) for p in __version__.split("-")[0].split("."))
+        self.assertGreaterEqual(parts, (1, 0, 0))
 
 
 class TestAILangOutbox(unittest.TestCase):
@@ -139,9 +139,9 @@ class TestCognitiveBrain(unittest.TestCase):
 
 class TestV70Integrations(unittest.TestCase):
     def test_version_and_prometheus(self):
-        # P0-4: ya no hardlock; verifica >= 2.0.0
-        parts = tuple(int(p) for p in __version__.split("."))
-        self.assertGreaterEqual(parts, (2, 0, 0))
+        # P0-4: ya no hardlock; verifica >= 1.0.0
+        parts = tuple(int(p) for p in __version__.split("-")[0].split("."))
+        self.assertGreaterEqual(parts, (1, 0, 0))
         m = Metrics()
         m.inc("messages_sent", 3)
         text = m.prometheus()

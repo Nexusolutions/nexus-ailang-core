@@ -13,9 +13,11 @@ from ailang.bench import run_bench
 class TestNivelE(unittest.TestCase):
     def test_version(self):
         # P0-1 (FASE 1): __version__ ahora se lee de ailang.versions y permite
-        # bumps. Afirmamos >= (5, 0, 0) en lugar de hardlock "5.0.0".
-        parts = tuple(int(p) for p in __version__.split("."))
-        self.assertGreaterEqual(parts, (5, 0, 0))
+        # bumps. Afirmamos >= (1, 0, 0) en lugar de hardlock "5.0.0".
+        # 1.0.0-rc.1: strip pre-release suffix for comparison
+        v_clean = __version__.split("-")[0]
+        parts = tuple(int(p) for p in v_clean.split("."))
+        self.assertGreaterEqual(parts, (1, 0, 0))
 
     def test_interpolation(self):
         self.assertEqual(run_source('let n = "Ada"\n"hi ${n}"'), "hi Ada")

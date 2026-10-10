@@ -1,6 +1,6 @@
 [project]
 name = "ailang-core"
-version = "5.7.0"
+version = "1.0.0-rc.1"
 description = "AILang-Core: lenguaje + IR cognitivo + runtime verificado (FASE 0 + A/B/C + P1/P2/P3 + S1-S5 completados)"
 authors = [{ name = "Enrique Jimenez García" }]
 requires-python = ">=3.10"

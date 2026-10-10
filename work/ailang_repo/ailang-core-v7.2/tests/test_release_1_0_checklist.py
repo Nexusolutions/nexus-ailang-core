@@ -313,9 +313,15 @@ match x {
 
     def test_33_versions_consistent(self):
         """Versiones: una sola fuente de verdad (ailang/versions.py)."""
-        # Todas las versiones deben ser strings semver válidos
+        import re
         for v in [LANGUAGE_VERSION, RUNTIME_VERSION, STDLIB_VERSION]:
-            parts = v.split(".")
+            # Accept semver with optional pre-release suffix: 1.0.0 or 1.0.0-rc.1
+            semver_re = r'^\d+\.\d+\.\d+(-\w+(\.\w+)*)?$'
+            self.assertTrue(re.match(semver_re, v),
+                          f"version {v!r} must be valid semver")
+            # Numeric parts must be parseable as int
+            v_clean = v.split("-")[0]
+            parts = v_clean.split(".")
             self.assertEqual(len(parts), 3, f"version {v} must be semver")
             for p in parts:
                 int(p)  # debe ser parseable como int

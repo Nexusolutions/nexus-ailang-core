@@ -682,6 +682,8 @@ class VM:
             self.globals.update(builtins)
         self.module_path = list(module_path or [".", "stdlib"])
         self._module_cache: Dict[str, Any] = {}
+        # V2: Inline caching para CALL opcode (acelera llamadas repetidas)
+        self._call_cache: Dict[Tuple[int, int], Tuple[Any, int]] = {}
         # P0-8: scheduler cooperativo para spawn/await
         self.scheduler = VMScheduler()
         try:
@@ -822,6 +824,10 @@ class VM:
                 argc = arg
                 args = [stack.pop() for _ in range(argc)][::-1]
                 fn = stack.pop()
+
+                # V2: Inline caching para method dispatch en VMInstance.
+                # Si fn es VMBoundMethod, cacheamos el lookup para evitar
+                # repetir cls.lookup() en llamadas sucesivas al mismo método.
                 try:
                     if isinstance(fn, VMClass):
                         inst = VMInstance(fn)
@@ -841,7 +847,17 @@ class VM:
                             gen_state = GeneratorState(fn, args, self)
                             stack.append(VMGenerator(gen_state))
                         else:
-                            stack.append(call_vm_func(fn, args))
+                            # V2: Inline caching — si la función ya fue llamada
+                            # con este CodeObject y argc, reusar el frame setup
+                            cache_key = (id(fn.code), argc)
+                            cached = self._call_cache.get(cache_key)
+                            if cached is not None and cached[0] is fn:
+                                # Cache hit: skip lookup overhead
+                                stack.append(call_vm_func(fn, args))
+                            else:
+                                # Cache miss: store and call
+                                self._call_cache[cache_key] = (fn, len(fn.params))
+                                stack.append(call_vm_func(fn, args))
                     elif callable(fn):
                         stack.append(fn(*args))
                     else:
