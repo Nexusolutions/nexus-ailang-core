@@ -163,10 +163,13 @@ class DAPServer:
 
     def _handle_step(self, mid, args, mode: str = "over"):
         if self.dbg and self.dbg.state.paused:
-            # Por ahora step es lo mismo que continue (no hay granularidad de step)
-            # Una implementación completa requeriría step-over/into/out en el Debugger
-            self.dbg.step()
-            # Emitir stopped event cuando pausa de nuevo
+            # U2: step granularity real
+            if mode == "over":
+                self.dbg.step_over()
+            elif mode == "into":
+                self.dbg.step()
+            elif mode == "out":
+                self.dbg.step_out()
             self._check_paused()
         self._response(mid, {})
 

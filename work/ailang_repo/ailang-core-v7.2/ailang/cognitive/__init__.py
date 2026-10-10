@@ -1,20 +1,19 @@
-"""ailang.cognitive — runtime cognitivo de AILang.
+"""ailang.cognitive — runtime cognitivo de AILang (U1).
 
-Este paquete es la **fuente normativa** dentro del paquete modular `ailang/`
-para todo lo relacionado con el runtime cognitivo: brain engine, brain store,
-retriever híbrido, latent engine, compilador del DSL cognitivo, y los IRs cognitivos.
+FASE P1-2 FINAL: las clases cognitivas ahora viven físicamente en el
+paquete modular `ailang/cognitive/`, no solo como fachada. Los módulos:
+- brain_engine.py: CognitiveBrainEngine, NexusAIEngine
+- brain_store.py: CognitiveBrainStore + knowledge graph dataclasses
+- retriever.py: HybridRetriever
+- dsl/: compilador del DSL cognitivo (migrado desde ailang/compiler/)
 
-FASE P1-1/P1-2/P1-3/P1-4 del roadmap:
-- `ailang.cognitive.dsl` se migró físicamente desde `ailang/compiler/` (frontend
-  duplicado eliminado). El símbolo canónico es `compile_cognitive` (no `compile_source`,
-  que colisionaba con `ailang.lang.vm.compile_source`).
-- `ailang.cognitive.{CognitiveBrainEngine, CognitiveBrainStore, ...}` re-exporta
-  desde el monolito `ailang_core.py` vía __getattr__ perezoso. Esta es una fachada
-  temporal: cuando P1-2 se complete, las clases vivirán físicamente aquí.
+Los imports desde el monolito `ailang_core.py` son perezosos vía
+__getattr__ para mantener retrocompatibilidad con código que aún
+importa `from ailang.cognitive import X` sin cargar el monolito si no se usa.
 """
 from __future__ import annotations
 
-# El DSL compiler (compilador cognitivo) SÍ vive físicamente aquí (no en el monolito).
+# DSL compiler (físico en ailang.cognitive.dsl)
 from ailang.cognitive.dsl import (
     compile_cognitive,
     CompilerPipeline,
@@ -29,44 +28,44 @@ from ailang.cognitive.dsl import (
 
 from typing import Any
 
-# Re-exportación perezosa (lazy) para evitar importar ailang_core si el
-# consumidor solo necesita el sub-paquete IR o el DSL compiler.
+# Brain engine + store + retriever (físicos en ailang.cognitive)
+from ailang.cognitive.brain_engine import (
+    CognitiveBrainEngine,
+    CognitiveBrainStore,
+    HybridRetriever,
+    SchemaPack,
+    KnowledgeDocument,
+    KnowledgeChunk,
+    KnowledgeEntity,
+    KnowledgeRelation,
+    Evidence,
+    ProvenanceRecord,
+    RetrievalResult,
+    NexusAIEngine,
+    BoundedChannel,
+    Metrics,
+    LatencyBudget,
+    HardLatencyBudget,
+    RetryPolicy,
+    _AVAILABLE as _BRAIN_AVAILABLE,
+)
 
-
+# Bytecode compiler + transport (fachada perezosa al monolito)
 def __getattr__(name: str) -> Any:
-    """Re-exporta símbolos cognitivos desde ailang_core de forma perezosa.
-
-    Cualquier import `from ailang.cognitive import CognitiveBrainEngine`
-    se resuelve aquí, cargando ailang_core solo cuando se necesita.
-    """
+    """Re-exporta símbolos del monolito de forma perezosa."""
     _COGNITIVE_SYMBOLS = {
-        # Compilador cognitivo DSL + IR (monolito-side, fachada)
         "CognitiveCompiler", "CognitiveRuntime", "CognitiveIR",
         "CognitiveInstruction", "Extension",
-        # Bytecode compiler (firmado v7)
         "AILangCompiler", "DecodedProgram", "decode_bytecode",
         "sign_bytecode", "verify_bytecode_signature",
         "SourceInspector", "strip_comments",
-        # Latent engine
-        "NexusAIEngine", "BoundedChannel",
-        # Brain engine + store + retriever
-        "CognitiveBrainEngine", "CognitiveBrainStore", "HybridRetriever",
-        "BrainEngine",  # alias histórico
-        # Schema + knowledge graph dataclasses
-        "SchemaType", "SchemaPack", "KnowledgeDocument", "KnowledgeChunk",
-        "KnowledgeEntity", "KnowledgeRelation", "Evidence",
-        "ProvenanceRecord", "RetrievalResult",
-        # Transport + outbox
         "TcpTransport", "DistributedNode", "PersistentOutbox", "OutboxItem",
-        "OutboxDispatcher", "RetryPolicy", "PersistentSeenStore",
+        "OutboxDispatcher", "PersistentSeenStore",
         "derive_outbox_key",
-        # Métricas + budget
-        "Metrics", "LatencyBudget", "HardLatencyBudget",
-        # Utilidades
         "stable_msg_id", "parse_address",
-        # Errores
         "CompilerError", "IntegrityError", "LatencyBudgetExceeded",
         "TransportError", "OutboxFull",
+        "BrainEngine",  # alias histórico
     }
     if name in _COGNITIVE_SYMBOLS:
         try:
@@ -87,26 +86,25 @@ def __getattr__(name: str) -> Any:
 
 
 __all__ = [
-    # DSL compiler (físico en ailang.cognitive.dsl)
+    # DSL compiler
     "compile_cognitive", "CompilerPipeline", "tokenize", "parse_tokens",
     "analyze", "SemanticError", "Token", "ASTModule", "ASTStmt",
+    # Brain engine + store + retriever (físicos)
+    "CognitiveBrainEngine", "CognitiveBrainStore", "HybridRetriever",
+    "SchemaPack", "KnowledgeDocument", "KnowledgeChunk",
+    "KnowledgeEntity", "KnowledgeRelation", "Evidence",
+    "ProvenanceRecord", "RetrievalResult",
+    "NexusAIEngine", "BoundedChannel",
+    "Metrics", "LatencyBudget", "HardLatencyBudget", "RetryPolicy",
     # Fachada al monolito (lazy)
     "CognitiveCompiler", "CognitiveRuntime", "CognitiveIR",
     "CognitiveInstruction", "Extension",
     "AILangCompiler", "DecodedProgram", "decode_bytecode",
     "sign_bytecode", "verify_bytecode_signature",
     "SourceInspector", "strip_comments",
-    "NexusAIEngine", "BoundedChannel",
-    "CognitiveBrainEngine", "CognitiveBrainStore", "HybridRetriever",
-    "BrainEngine",
-    "SchemaType", "SchemaPack", "KnowledgeDocument", "KnowledgeChunk",
-    "KnowledgeEntity", "KnowledgeRelation", "Evidence",
-    "ProvenanceRecord", "RetrievalResult",
     "TcpTransport", "DistributedNode", "PersistentOutbox", "OutboxItem",
-    "OutboxDispatcher", "RetryPolicy", "PersistentSeenStore",
-    "derive_outbox_key",
-    "Metrics", "LatencyBudget", "HardLatencyBudget",
+    "OutboxDispatcher", "PersistentSeenStore", "derive_outbox_key",
     "stable_msg_id", "parse_address",
     "CompilerError", "IntegrityError", "LatencyBudgetExceeded",
-    "TransportError", "OutboxFull",
+    "TransportError", "OutboxFull", "BrainEngine",
 ]

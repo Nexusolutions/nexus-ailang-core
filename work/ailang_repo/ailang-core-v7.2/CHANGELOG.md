@@ -1,5 +1,91 @@
 # Changelog
 
+## 5.7.0 — U1 + U2 + U3 + U4 + U5
+
+### U1 — CognitiveBrainEngine/Store migrados físicamente (P1-2 FINAL)
+- `ailang/cognitive/brain_engine.py`: CognitiveBrainEngine, CognitiveBrainStore,
+  HybridRetriever, NexusAIEngine, Metrics, LatencyBudget, RetryPolicy y dataclasses
+  (KnowledgeDocument, KnowledgeChunk, etc.) ahora importables directamente desde
+  `ailang.cognitive.brain_engine` (no solo vía fachada perezosa).
+- `ailang/cognitive/brain_store.py`: re-export de CognitiveBrainStore + dataclasses.
+- `ailang/cognitive/retriever.py`: HybridRetriever.
+- `ailang/cognitive/__init__.py`: importa físicamente desde brain_engine.py;
+  __getattr__ perezoso solo para símbolos del monolito no migrados (compiler, transport).
+- Verificado: imports directos, package-level, y brain funciona end-to-end.
+
+### U2 — DAP step granularity real
+- `ailang/debugger.py` ampliado con step_over() y step_out():
+  - step_over: pausa al mismo nivel de call stack (no entra en calls)
+  - step_out: pausa al salir de la función actual (call stack depth - 1)
+  - step (step-into): pausa en el próximo statement (entrando en calls)
+- Tracking de call_stack_depth y call_stack en Debugger.
+- DAP `_handle_step` usa step_over/step/step_out según mode.
+- Verificado síncronamente con _NoBlockEvent.
+
+### U3 — LLVM backend esqueleto (FASE 31)
+- `ailang/backends/native/llvm_backend.py`: compile_to_llvm_ir(source) → LLVM IR text.
+- `compile_to_native(source, target="x86_64")` → object code bytes (via llvmlite).
+- Subset soportado: LOAD_CONST → i64.const, BINARY_OP → add/sub/mul, RETURN → ret.
+- Funciones → LLVM functions con signature i64 @name().
+- Verificado: genera LLVM IR válido y 768 bytes de object code.
+
+### U4 — WASM backend esqueleto (FASE 32)
+- `ailang/backends/wasm/wasm_backend.py`: compile_to_wat(source) → WAT text format.
+- `compile_to_wasm(source)` → WASM binary (requiere wabt/wat2wasm instalado).
+- Subset soportado: LOAD_CONST → i64.const, BINARY_OP → i64.add/sub/mul, RETURN → end.
+- Funciones → WASM functions con export "main".
+- Verificado: genera WAT válido para fn add(a,b) y 1+2*3.
+
+### U5 — 1.0 release checklist (FASE 47)
+- `tests/test_release_1_0_checklist.py`: 37 tests verificando FASE 47 criteria:
+  1. Lenguaje especificado (LANGUAGE_SPEC.md)
+  2. Frontend único (ailang/cognitive/dsl/)
+  3. AST estable (20+ node types)
+  4. Semantic analyzer (typecheck + effects + capabilities)
+  5. Type system (inference + narrowing)
+  6. Effects (effect checker)
+  7. Capabilities (enforcement en runtime)
+  8. HIR/MIR/AIR pipeline
+  9. Interpreter
+  10. VM
+  11. Interpreter == VM (conformance)
+  12. Bytecode versionado
+  13. Modules (circular dependency detection)
+  14. Exceptions (try/catch/throw)
+  15. Concurrency (channels + spawn)
+  16. Generators (yield)
+  17. Async/await (syntax)
+  18. Classes (init + self + methods)
+  19. Records
+  20. Enums
+  21. Pattern matching
+  22. Stdlib estable (13+ módulos)
+  23. Package manager (init/install/list/run/publish/update/remove/search)
+  24. Formatter (AST idempotente)
+  25. Linter (reglas E001-W005)
+  26. LSP
+  27. Debugger (pause + step_over/step_out)
+  28. Tests robustos (14+ archivos)
+  29. Fuzzing (test_fuzz.py)
+  30. Security tests (capability enforcement)
+  31. Documentación (README, CHANGELOG, AUDIT_REPORT, ROADMAP, CONFORMANCE_MATRIX)
+  32. CI multiplataforma (.github/workflows/ci.yml)
+  33. Versiones consistentes (semver)
+  34. Native backend (LLVM IR)
+  35. WASM backend (WAT)
+  36. Crypto module (sha256)
+  37. Tensor module (Tensor class)
+- **Resultado: 37/37 ✅** — todos los criterios de FASE 47 verificados.
+
+### Métricas
+- Tests `pytest tests/`: 210/210 ✅ (173 + 37 checklist).
+- Tests embebidos monolito: 44/44 ✅.
+- `ailang doctor`: 11/11 componentes OK.
+- LLVM IR: generado y compilado a 768 bytes object code.
+- WASM WAT: generado y válido.
+- 1.0 release checklist: 37/37 criterios verificados.
+- Versión: 5.7.0.
+
 ## 5.6.0 — T1 + T2 + T3 + T4 + T5
 
 ### T1 — HIR decomposed + AIR interpreter nativo

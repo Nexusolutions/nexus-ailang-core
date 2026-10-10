@@ -1,4 +1,4 @@
-# AILang 5.6.0
+# AILang 5.7.0
 
 Lenguaje de programación con runtime cognitivo. La versión vive en `ailang/versions.py`
 (FASE 1 del prompt maestro: 7 constantes separadas — LANGUAGE / RUNTIME / BYTECODE / IR / ABI / STDLIB / PACKAGE_FORMAT).

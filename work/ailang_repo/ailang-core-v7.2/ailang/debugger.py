@@ -47,13 +47,17 @@ class Debugger:
         self._step_mode = False
         self.history: List[str] = []
         # --- Pause real (P0-10) ---
-        # `_pause_event` se clear()a al entrar en pause y set()ea al continuar.
-        # `_pause_ack` se set()a cuando el hilo ejecutor ha pausado, para que
-        # wait_paused() pueda detectarlo sin busy-wait.
         self._pause_event = threading.Event()
         self._pause_event.set()  # inicialmente libre
         self._pause_ack = threading.Event()
         self._stop_requested = False
+        # --- U2: Step granularity ---
+        # _step_over_depth: si no es None, step-over esperará a volver a esta depth
+        self._step_over_depth: Optional[int] = None
+        # _call_stack_depth: profundidad actual de llamadas a función
+        self._call_stack_depth: int = 0
+        # Track de call stack para step granularity
+        self._call_stack: List[str] = []
 
     def set_breakpoint(self, line: int) -> None:
         self.breakpoints.add(int(line))
@@ -64,12 +68,35 @@ class Debugger:
     def run(self) -> Any:
         """Ejecuta hasta breakpoint o fin."""
         self._step_mode = False
+        self._step_over_depth = None
         return self._exec_program()
 
     def step(self) -> Any:
-        """Ejecuta un statement y pausa."""
+        """Step-into: ejecuta un statement y pausa (incluso dentro de calls)."""
         self._step_mode = True
-        self._pause_event.set()  # libera para que avance 1 stmt
+        self._step_over_depth = None
+        self._pause_event.set()
+        return self._exec_program()
+
+    def step_over(self) -> Any:
+        """Step-over: ejecuta hasta el próximo statement al mismo nivel de call stack.
+
+        Si el siguiente statement es una llamada a función, la ejecuta completa
+        sin pausar dentro de ella.
+        """
+        self._step_mode = False
+        self._step_over_depth = self._call_stack_depth
+        self._pause_ack.clear()
+        self._pause_event.set()
+        return self._exec_program()
+
+    def step_out(self) -> Any:
+        """Step-out: ejecuta hasta salir de la función actual."""
+        self._step_mode = False
+        # Pausar cuando volvamos al nivel de call stack padre
+        self._step_over_depth = self._call_stack_depth - 1
+        self._pause_ack.clear()
+        self._pause_event.set()
         return self._exec_program()
 
     def continue_run(self) -> None:
@@ -95,19 +122,34 @@ class Debugger:
         return dict(self.interp.global_env.values)
 
     def _maybe_pause(self, line: int, detail: str = "") -> None:
-        should_pause = (line in self.breakpoints) or self._step_mode
+        # Determinar si debemos pausar
+        at_breakpoint = line in self.breakpoints
+        step_into = self._step_mode
+        # U2: step-over solo pausa si estamos al mismo nivel (o menos) de call stack
+        step_over_match = (
+            self._step_over_depth is not None
+            and self._call_stack_depth <= self._step_over_depth
+        )
+
+        should_pause = at_breakpoint or step_into or step_over_match
         if not should_pause:
             return
+        # Si es step-over y estamos a mayor profundidad, no pausar todavía
+        if (self._step_over_depth is not None
+            and self._call_stack_depth > self._step_over_depth
+            and not at_breakpoint):
+            return
+
         # Entramos en pausa: bloqueamos el hilo ejecutor hasta continue/step.
         self.state = DebugState(True, line, detail or "breakpoint")
-        self.history.append(f"pause line={line} {detail}")
+        self.history.append(f"pause line={line} {detail} depth={self._call_stack_depth}")
+        self._step_over_depth = None  # consumido
         self._pause_event.clear()       # bloqueará el wait() siguiente
         self._pause_ack.set()           # notifica al frontend
         self._pause_event.wait()        # BLOQUEA aquí
         # Al despertar:
         self.state = DebugState(False, line, "resumed")
         if self._step_mode:
-            # step ya consumió un stmt; re-armar pausa inmediata en el siguiente
             self._step_mode = False
 
     def _exec_program(self) -> Any:

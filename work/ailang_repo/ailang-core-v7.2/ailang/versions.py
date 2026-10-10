@@ -44,7 +44,7 @@ Historial:
            de aritmética/closures/parser/formatter), P2-13 (CI multiplataforma
            GitHub Actions matrix 3 OS × 3 Python versions), P2-14 (benchmark
            suite reproducible con 17 casos + output tabular + save a JSON).
-  5.6.0  — S1 (intérprete AIR nativo con --air flag: compila a AIR + verifica
+  5.7.0  — S1 (intérprete AIR nativo con --air flag: compila a AIR + verifica
            capabilities + ejecuta via VM), S2 (DAP completo: threads/scopes/
            stepIn/stepOut/evaluate/setExceptionBreakpoints/pause/terminate +
            threading real del debugger con stopped events), S3 (fuzzing con
@@ -60,17 +60,17 @@ from __future__ import annotations
 
 # --- Versión agregada del paquete -------------------------------------------
 
-__version__: str = "5.6.0"
+__version__: str = "5.7.0"
 
 # --- 7 constantes separadas (FASE 1) ----------------------------------------
 
-LANGUAGE_VERSION: str = "5.6.0"
+LANGUAGE_VERSION: str = "5.7.0"
 """Versión semántica del lenguaje: léxico, gramática, AST, sistema de tipos,
 semántica de ejecución. Bump major ante breaking changes sintácticos.
 Bump minor ante nuevas features del lenguaje. Bump patch ante bugfixes semánticos.
 """
 
-RUNTIME_VERSION: str = "5.6.0"
+RUNTIME_VERSION: str = "5.7.0"
 """Versión del runtime: interpreter + VM + bytecode_io + closures + scheduler.
 Independiente de LANGUAGE_VERSION porque el runtime puede evolucionar
 (se añade GC, se cambia el modelo de threads, etc.) sin tocar el lenguaje.
@@ -94,7 +94,7 @@ real (no hay backend nativo), pero la constante existe para cuando se
 implemente (FASE 31 - LLVM).
 """
 
-STDLIB_VERSION: str = "5.6.0"
+STDLIB_VERSION: str = "5.7.0"
 """Versión de la stdlib: io, math, strings, json, time, http, path, sys,
 random, listops, test_mod, re, brain. Bump cuando se añade/elimina un
 módulo o se cambia una API pública de stdlib.
