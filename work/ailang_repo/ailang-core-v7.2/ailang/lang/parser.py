@@ -124,10 +124,24 @@ class Parser:
         type_ann = None
         if self.cur().kind == "COLON":
             self.adv()
-            type_ann = self.expect("IDENT").value
+            type_ann = self.parse_type_annotation()
         self.expect("EQ")
         value = self.expression()
         return A.Let(name.value, value, type_ann, kw.line)
+
+    def parse_type_annotation(self) -> str:
+        """X1: Parsea type annotations incluyendo generics: List[int], Dict[string, int]."""
+        base = self.expect("IDENT").value
+        # Check for generic parameters: IDENT[LBRACK ... RBRACK]
+        if self.cur().kind == "LBRACK":
+            self.adv()  # consume [
+            params = [self.parse_type_annotation()]
+            while self.cur().kind == "COMMA":
+                self.adv()  # consume ,
+                params.append(self.parse_type_annotation())
+            self.expect("RBRACK", "se esperaba ] en type annotation")
+            return f"{base}[{', '.join(params)}]"
+        return base
 
     def if_stmt(self) -> A.If:
         kw = self.adv()

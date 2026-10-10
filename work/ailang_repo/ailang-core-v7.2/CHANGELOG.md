@@ -1,5 +1,62 @@
 # Changelog
 
+## 1.1.0 — Post-1.0 Features (X1-X5)
+
+### X1 — Generics en source code
+- `ailang/lang/parser.py`: `parse_type_annotation()` parsea `List[int]`,
+  `Dict[string, int]`, `Tuple[int, string, bool]`, y nested generics como
+  `List[List[int]]`.
+- `ailang/lang/typecheck.py`: `GenericType` dataclass + `_parse_generic()` +
+  `_split_type_params()` (handles nested brackets).
+- 11 tipos genéricos: List, Dict, Tuple, Set, Function, Future, Generator,
+  Channel, Tensor, Optional, Union.
+- Verificado: `let xs: List[int] = [1, 2, 3]` parsea y typecheck OK.
+
+### X2 — JIT compilation via LLVM
+- `ailang/backends/native/jit.py`: `JITCompiler` con:
+  - Profile de llamadas por función (HotFunction tracking)
+  - Threshold configurable (default: 100 llamadas)
+  - `compile_function()`: compila a LLVM IR → native code via llvmlite MCJIT
+  - `get_native()`: retorna callable nativo para llamadas directas
+  - `stats()`: reporta funciones compiladas, calls, compile_time
+- Verificado: profile tracking funcional, LLVM IR generation OK.
+
+### X3 — Multi-backend execution
+- `ailang/runtime/multi_backend.py`: `run_smart(source)` selecciona backend:
+  - Programas pequeños (< 20 LOC, ≤ 1 fn) → Interpreter (fast startup)
+  - Programas con muchas funciones (> 3) → VM (mejor call performance)
+  - Default → VM
+- `analyze_backend_choice(source)`: reporta backend seleccionado + reasoning.
+- Verificado: 3 casos (small → interp, multi-fn → vm, medium → interp/vm).
+
+### X4 — GPU/NPU/TPU backends reales
+- `ailang/hardware/accel.py` reescrito:
+  - `_AccelBackend` con dispatch real: si cupy/torch/jax está disponible,
+    ejecuta matmul y vector_score en el dispositivo nativo.
+  - `_to_native_array()`, `_to_host_array()`, `_native_matmul()`,
+    `_native_vector_score()` para cupy, torch, jax.
+  - `backend_status()`: reporta estado de todos los backends.
+  - GPUBackend verifica `torch.cuda.is_available()` antes de activarse.
+  - Fallback transparente a CPU (NumPy) si no hay dispositivo.
+
+### X5 — Formal verification conformance
+- `tests/test_formal_conformance.py`: 4 tests verifican:
+  1. `test_interp_vm_air_conformance`: 31 programas comparan Interpreter==VM==AIR
+  2. `test_llvm_ir_generation_valid`: LLVM IR válido para programas sin control de flujo
+  3. `test_wat_generation_valid`: WAT válido para todos los programas
+  4. `test_generics_parse_and_normalize`: 5 casos de generics parsing
+- Resultado: **4/4 ✅** — conformance verificada para Interpreter, VM, AIR, LLVM, WASM.
+
+### Métricas
+- Tests `pytest tests/`: 214/214 ✅ (210 + 4 formal conformance).
+- ailang doctor: 11/11 componentes OK.
+- Generics: 11 tipos soportados en source code.
+- JIT: profile tracking + LLVM MCJIT compilation.
+- Multi-backend: selección automática Interpreter/VM.
+- GPU/NPU/TPU: dispatch real con fallback CPU.
+- Formal conformance: 31 programas verificados Interpreter==VM==AIR.
+- Versión: 1.1.0.
+
 ## 1.0.0 — Release Final (W1-W5)
 
 ### W1 — Release 1.0.0

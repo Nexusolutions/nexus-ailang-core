@@ -60,17 +60,17 @@ from __future__ import annotations
 
 # --- Versión agregada del paquete -------------------------------------------
 
-__version__: str = "1.0.0"
+__version__: str = "1.1.0"
 
 # --- 7 constantes separadas (FASE 1) ----------------------------------------
 
-LANGUAGE_VERSION: str = "1.0.0"
+LANGUAGE_VERSION: str = "1.1.0"
 """Versión semántica del lenguaje: léxico, gramática, AST, sistema de tipos,
 semántica de ejecución. Bump major ante breaking changes sintácticos.
 Bump minor ante nuevas features del lenguaje. Bump patch ante bugfixes semánticos.
 """
 
-RUNTIME_VERSION: str = "1.0.0"
+RUNTIME_VERSION: str = "1.1.0"
 """Versión del runtime: interpreter + VM + bytecode_io + closures + scheduler.
 Independiente de LANGUAGE_VERSION porque el runtime puede evolucionar
 (se añade GC, se cambia el modelo de threads, etc.) sin tocar el lenguaje.
@@ -94,7 +94,7 @@ real (no hay backend nativo), pero la constante existe para cuando se
 implemente (FASE 31 - LLVM).
 """
 
-STDLIB_VERSION: str = "1.0.0"
+STDLIB_VERSION: str = "1.1.0"
 """Versión de la stdlib: io, math, strings, json, time, http, path, sys,
 random, listops, test_mod, re, brain. Bump cuando se añade/elimina un
 módulo o se cambia una API pública de stdlib.
