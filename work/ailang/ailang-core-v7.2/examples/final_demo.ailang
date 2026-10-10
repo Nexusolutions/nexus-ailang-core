@@ -1,0 +1,50 @@
+// AILang v8.0 — demo de entrega final
+import math
+import listops
+import json
+
+class Shape {
+  fn area() { return 0 }
+  fn tag() { return "shape" }
+}
+
+class Circle extends Shape {
+  fn init(r) { self.r = r }
+  fn area() { return math.pi * self.r * self.r }
+  fn tag() { return "circle" }
+}
+
+class Square extends Shape {
+  fn init(s) { self.s = s }
+  fn area() { return self.s * self.s }
+  fn tag() { return "square" }
+}
+
+fn total_area(shapes) {
+  let s = 0
+  for sh in shapes {
+    s = s + sh.area()
+  }
+  return s
+}
+
+let shapes = [Circle(1), Square(2), Circle(2)]
+print("tags:")
+for sh in shapes {
+  print(" -", sh.tag(), "area≈", math.floor(sh.area()))
+}
+print("total≈", math.floor(total_area(shapes)))
+
+// break / continue
+let n = 0
+let i = 0
+while i < 20 {
+  i = i + 1
+  if i % 2 == 0 { continue }
+  n = n + i
+  if i > 9 { break }
+}
+print("odd sum with break=", n)
+
+let report = json.dumps({"version": "8.0.0", "shapes": len(shapes)})
+print(report)

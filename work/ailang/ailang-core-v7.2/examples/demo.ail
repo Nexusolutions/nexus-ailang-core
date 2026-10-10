@@ -1,0 +1,4 @@
+purge_after(20ms)
+brain.ingest source="repo" path="Projects/AILang.md" content="AILang-Core formal Cognitive IR with hybrid retrieval"
+brain.query text="Cognitive IR" top_k=3
+brain.think text="what is AILang-Core"

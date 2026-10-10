@@ -1,0 +1,21 @@
+[project]
+name = "ailang-core"
+version = "7.1.0"
+description = "AILang-Core: formal IR stack, cognitive DSL, reliable transport"
+authors = [{ name = "Enrique Jimenez García" }]
+requires-python = ">=3.10"
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+crypto = ["cryptography"]
+postgres = ["psycopg[binary]"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ailang*"]
+
+[tool.setuptools]
+py-modules = ["ailang_core"]

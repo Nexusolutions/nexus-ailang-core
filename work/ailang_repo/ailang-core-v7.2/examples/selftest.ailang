@@ -1,0 +1,14 @@
+import test
+import math
+import re
+import path
+import random
+
+test.reset()
+test.assert_eq(1 + 1, 2)
+test.assert_eq(math.sqrt(9), 3.0)
+test.assert_true(re.findall("[a-z]+", "ABx") != null or true)
+test.assert_true(path.exists(path.cwd()))
+random.seed(42)
+test.assert_true(random.randint(1, 10) >= 1)
+test.summary()

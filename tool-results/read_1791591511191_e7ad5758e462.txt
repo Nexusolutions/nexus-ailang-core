@@ -1,0 +1,1574 @@
+     1→PROMPT MAESTRO — AILANG: CONSOLIDACIÓN, CORRECCIÓN Y EVOLUCIÓN A LENGUAJE DE PROGRAMACIÓN PROFESIONAL
+     2→
+     3→ROL
+     4→Actúa simultáneamente como:
+     5→- Arquitecto principal de lenguajes de programación.
+     6→- Ingeniero senior de compiladores, intérpretes, VM, IR y runtimes.
+     7→- Ingeniero de sistemas y seguridad.
+     8→- Ingeniero de herramientas de desarrollo (LSP, DAP, formatter, linter, profiler).
+     9→- Ingeniero de IA/ML runtime.
+    10→- Ingeniero de QA, testing, fuzzing y CI/CD.
+    11→- Ingeniero de rendimiento y optimización.
+    12→- Maintainer de proyectos open source de nivel profesional.
+    13→
+    14→PROYECTO
+    15→El proyecto es AILang, un nuevo lenguaje de programación en desarrollo. Debes trabajar SOBRE EL REPOSITORIO EXISTENTE y conservar los avances válidos. NO reinicies el proyecto desde cero y NO elimines funcionalidades existentes sin demostrar que son obsoletas, duplicadas o incompatibles.
+    16→
+    17→OBJETIVO GENERAL
+    18→Llevar AILang desde su estado actual hasta una arquitectura coherente, verificable, segura, extensible y preparada para convertirse en un lenguaje de programación real.
+    19→
+    20→PRINCIPIO FUNDAMENTAL
+    21→NO agregues funcionalidades indiscriminadamente.
+    22→Primero:
+    23→1. Audita.
+    24→2. Detecta inconsistencias.
+    25→3. Define la arquitectura objetivo.
+    26→4. Consolida componentes duplicados.
+    27→5. Corrige errores.
+    28→6. Formaliza la semántica.
+    29→7. Crea pruebas de conformidad.
+    30→8. Implementa mejoras.
+    31→9. Verifica regresiones.
+    32→10. Documenta todo.
+    33→
+    34→REGLA ABSOLUTA
+    35→No destruyas trabajo funcional existente. Toda modificación debe ser:
+    36→- incremental,
+    37→- reversible,
+    38→- testeada,
+    39→- documentada,
+    40→- compatible con la arquitectura objetivo.
+    41→
+    42→==================================================
+    43→FASE 0 — AUDITORÍA COMPLETA DEL REPOSITORIO
+    44→==================================================
+    45→
+    46→Antes de modificar código:
+    47→
+    48→1. Inspecciona TODO el repositorio.
+    49→2. Identifica:
+    50→   - estructura de carpetas,
+    51→   - módulos,
+    52→   - archivos duplicados,
+    53→   - implementaciones paralelas,
+    54→   - código muerto,
+    55→   - TODO/FIXME,
+    56→   - stubs,
+    57→   - NotImplementedError,
+    58→   - funciones vacías,
+    59→   - imports circulares,
+    60→   - dependencias innecesarias,
+    61→   - APIs inconsistentes,
+    62→   - documentación desactualizada,
+    63→   - pruebas existentes,
+    64→   - CI,
+    65→   - configuración de empaquetado.
+    66→3. Determina cuál es la implementación normativa actual.
+    67→4. NO asumas que el nombre de versión del ZIP corresponde a la versión interna.
+    68→5. Genera un informe:
+    69→   AUDIT_REPORT.md
+    70→
+    71→El informe debe contener:
+    72→- estado actual,
+    73→- arquitectura encontrada,
+    74→- funcionalidades existentes,
+    75→- funcionalidades incompletas,
+    76→- contradicciones,
+    77→- riesgos,
+    78→- deuda técnica,
+    79→- duplicidades,
+    80→- prioridades P0/P1/P2/P3,
+    81→- propuesta de arquitectura objetivo.
+    82→
+    83→==================================================
+    84→FASE 1 — UNIFICACIÓN DE VERSIONADO
+    85→==================================================
+    86→
+    87→Detecta y corrige todas las inconsistencias de versión.
+    88→
+    89→Separar claramente:
+    90→
+    91→LANGUAGE_VERSION
+    92→RUNTIME_VERSION
+    93→BYTECODE_VERSION
+    94→IR_VERSION
+    95→ABI_VERSION
+    96→STDLIB_VERSION
+    97→PACKAGE_FORMAT_VERSION
+    98→
+    99→No utilizar una única cadena de versión para representar todo.
+   100→
+   101→Crear:
+   102→VERSIONING.md
+   103→CHANGELOG.md
+   104→
+   105→Establecer Semantic Versioning.
+   106→
+   107→Toda la documentación, pyproject, runtime, CLI, stdlib, tests y metadata deben utilizar una fuente de verdad única.
+   108→
+   109→==================================================
+   110→FASE 2 — ARQUITECTURA DEFINITIVA
+   111→==================================================
+   112→
+   113→Consolidar cualquier implementación duplicada del frontend.
+   114→
+   115→La arquitectura objetivo debe ser:
+   116→
+   117→Source
+   118→  ↓
+   119→Lexer
+   120→  ↓
+   121→Parser
+   122→  ↓
+   123→AST
+   124→  ↓
+   125→Name/Scope Resolution
+   126→  ↓
+   127→Type Checker
+   128→  ↓
+   129→Effect Checker
+   130→  ↓
+   131→Capability/Security Checker
+   132→  ↓
+   133→Typed/Resolved AST
+   134→  ↓
+   135→HIR
+   136→  ↓
+   137→MIR
+   138→  ↓
+   139→AIR
+   140→  ├── Interpreter
+   141→  ├── Bytecode Compiler
+   142→  ├── VM
+   143→  ├── Native Backend futuro
+   144→  └── WASM Backend futuro
+   145→
+   146→El runtime debe estar separado del frontend.
+   147→
+   148→La capa cognitiva NO debe convertirse en un compilador paralelo.
+   149→
+   150→Debe integrarse como extensiones del IR principal.
+   151→
+   152→==================================================
+   153→FASE 3 — FRONTEND ÚNICO
+   154→==================================================
+   155→
+   156→Consolidar:
+   157→
+   158→lexer
+   159→parser
+   160→AST
+   161→diagnostics
+   162→source maps
+   163→
+   164→Eliminar duplicidad entre diferentes implementaciones.
+   165→
+   166→Crear una única fuente normativa.
+   167→
+   168→El AST debe cubrir de forma coherente:
+   169→
+   170→- literals,
+   171→- variables,
+   172→- assignments,
+   173→- blocks,
+   174→- if,
+   175→- while,
+   176→- for,
+   177→- functions,
+   178→- lambdas,
+   179→- closures,
+   180→- return,
+   181→- break,
+   182→- continue,
+   183→- classes,
+   184→- interfaces,
+   185→- records,
+   186→- enums,
+   187→- imports,
+   188→- exports,
+   189→- exceptions,
+   190→- match,
+   191→- patterns,
+   192→- async,
+   193→- await,
+   194→- spawn,
+   195→- channels,
+   196→- yield,
+   197→- generators,
+   198→- interpolated strings,
+   199→- type declarations,
+   200→- generics si forman parte de la especificación.
+   201→
+   202→No agregues sintaxis solamente por agregarla: cada característica debe tener semántica, AST, type checking, IR, runtime, VM y tests.
+   203→
+   204→==================================================
+   205→FASE 4 — GRAMÁTICA Y ESPECIFICACIÓN FORMAL
+   206→==================================================
+   207→
+   208→Crear una especificación normativa:
+   209→
+   210→LANGUAGE_SPEC.md
+   211→
+   212→Debe incluir:
+   213→
+   214→- lexical grammar,
+   215→- tokens,
+   216→- literals,
+   217→- operators,
+   218→- precedence,
+   219→- associativity,
+   220→- statements,
+   221→- expressions,
+   222→- declarations,
+   223→- functions,
+   224→- classes,
+   225→- interfaces,
+   226→- records,
+   227→- enums,
+   228→- modules,
+   229→- imports/exports,
+   230→- pattern matching,
+   231→- exceptions,
+   232→- concurrency,
+   233→- async/await,
+   234→- generators,
+   235→- types,
+   236→- generics,
+   237→- effects,
+   238→- capabilities.
+   239→
+   240→Para cada característica documentar:
+   241→
+   242→1. Sintaxis.
+   243→2. AST.
+   244→3. Semántica.
+   245→4. Reglas de tipos.
+   246→5. Runtime behavior.
+   247→6. Errores.
+   248→7. Ejemplos.
+   249→8. Tests.
+   250→
+   251→La especificación debe coincidir con el comportamiento real.
+   252→
+   253→==================================================
+   254→FASE 5 — SISTEMA DE TIPOS
+   255→==================================================
+   256→
+   257→Construir un sistema de tipos coherente.
+   258→
+   259→Tipos base:
+   260→
+   261→Any
+   262→Never
+   263→Null
+   264→Bool
+   265→Int
+   266→Float
+   267→Number
+   268→String
+   269→
+   270→Tipos compuestos:
+   271→
+   272→List[T]
+   273→Dict[K,V]
+   274→Tuple[T...]
+   275→Set[T]
+   276→Function[A,B]
+   277→Future[T]
+   278→Generator[T]
+   279→Channel[T]
+   280→Tensor[T]
+   281→
+   282→Tipos avanzados cuando estén justificados:
+   283→
+   284→Union
+   285→Optional
+   286→Generic
+   287→Record
+   288→Enum
+   289→Interface
+   290→Class
+   291→
+   292→Implementar:
+   293→
+   294→- type inference,
+   295→- function parameter checking,
+   296→- return checking,
+   297→- assignment checking,
+   298→- collection inference,
+   299→- method signatures,
+   300→- generic constraints,
+   301→- union narrowing,
+   302→- optional handling,
+   303→- pattern typing.
+   304→
+   305→Crear:
+   306→
+   307→ailang check
+   308→
+   309→que realice análisis sin ejecutar el programa.
+   310→
+   311→==================================================
+   312→FASE 6 — SCOPE Y RESOLUCIÓN
+   313→==================================================
+   314→
+   315→Formalizar:
+   316→
+   317→- global scope,
+   318→- module scope,
+   319→- function scope,
+   320→- block scope,
+   321→- class scope,
+   322→- closure scope,
+   323→- loop scope,
+   324→- pattern scope,
+   325→- exception scope.
+   326→
+   327→Resolver correctamente:
+   328→
+   329→- shadowing,
+   330→- lexical scope,
+   331→- closures,
+   332→- mutable captured variables,
+   333→- imports,
+   334→- exports,
+   335→- namespaces.
+   336→
+   337→Crear tests específicos de scope.
+   338→
+   339→==================================================
+   340→FASE 7 — DIAGNÓSTICOS PROFESIONALES
+   341→==================================================
+   342→
+   343→Crear una jerarquía:
+   344→
+   345→AILangError
+   346→├── LexError
+   347→├── SyntaxError
+   348→├── ParseError
+   349→├── TypeError
+   350→├── NameError
+   351→├── ImportError
+   352→├── RuntimeError
+   353→├── ValueError
+   354→├── IndexError
+   355→├── AttributeError
+   356→├── SecurityError
+   357→├── CapabilityError
+   358→├── TimeoutError
+   359→├── MemoryError
+   360→├── IOError
+   361→└── ConcurrencyError
+   362→
+   363→Los errores deben incluir:
+   364→
+   365→- código,
+   366→- archivo,
+   367→- línea,
+   368→- columna,
+   369→- fragmento de código,
+   370→- indicador visual,
+   371→- mensaje,
+   372→- causa,
+   373→- sugerencia de solución cuando sea posible.
+   374→
+   375→Ejemplo:
+   376→
+   377→error[E042]:
+   378→cannot assign String to variable 'age'
+   379→
+   380→  12 | age = "Enrique"
+   381→     |       ^^^^^^^^^
+   382→
+   383→expected: Int
+   384→found: String
+   385→
+   386→==================================================
+   387→FASE 8 — SOURCE MAPS
+   388→==================================================
+   389→
+   390→Conservar durante todo el pipeline:
+   391→
+   392→source file
+   393→line
+   394→column
+   395→AST node
+   396→HIR node
+   397→MIR node
+   398→AIR instruction
+   399→bytecode instruction
+   400→runtime frame
+   401→
+   402→Esto debe permitir errores y debugging precisos incluso desde la VM.
+   403→
+   404→==================================================
+   405→FASE 9 — IR UNIFICADO
+   406→==================================================
+   407→
+   408→Crear una arquitectura:
+   409→
+   410→AST
+   411→ ↓
+   412→HIR
+   413→ ↓
+   414→MIR
+   415→ ↓
+   416→AIR
+   417→
+   418→AIR debe tener instrucciones estructuradas y tipadas.
+   419→
+   420→Cada instrucción puede incluir:
+   421→
+   422→opcode
+   423→operands
+   424→result
+   425→type
+   426→effects
+   427→capabilities
+   428→source_location
+   429→metadata
+   430→
+   431→Integrar como extensiones:
+   432→
+   433→Core IR
+   434→Cognitive IR
+   435→Agent IR
+   436→Task IR
+   437→Security metadata
+   438→
+   439→No mantener compiladores paralelos incompatibles.
+   440→
+   441→==================================================
+   442→FASE 10 — COGNITIVE RUNTIME
+   443→==================================================
+   444→
+   445→Conservar y fortalecer las capacidades cognitivas existentes.
+   446→
+   447→Integrarlas en el lenguaje mediante primitivas coherentes como:
+   448→
+   449→brain.query
+   450→brain.think
+   451→brain.ingest
+   452→memory
+   453→remember
+   454→recall
+   455→embed
+   456→similarity
+   457→plan
+   458→observe
+   459→act
+   460→
+   461→Cada operación debe tener:
+   462→
+   463→- AST/Call semantics,
+   464→- type checking,
+   465→- effect,
+   466→- capability,
+   467→- IR instruction,
+   468→- runtime implementation,
+   469→- deterministic fallback cuando corresponda,
+   470→- tests.
+   471→
+   472→No presentar como “IA nativa” algo que sea solamente un wrapper de Python.
+   473→
+   474→Documentar claramente qué hace realmente cada backend.
+   475→
+   476→==================================================
+   477→FASE 11 — SECURITY + CAPABILITIES + EFFECTS
+   478→==================================================
+   479→
+   480→Implementar un modelo de seguridad basado en capacidades.
+   481→
+   482→Ejemplos:
+   483→
+   484→filesystem.read
+   485→filesystem.write
+   486→network.http
+   487→process.spawn
+   488→ai.query
+   489→hardware.gpu
+   490→hardware.npu
+   491→database.read
+   492→database.write
+   493→
+   494→Ejemplo:
+   495→
+   496→capability filesystem.read
+   497→capability network.http
+   498→
+   499→Las operaciones deben declarar efectos:
+   500→
+   501→pure
+   502→io
+   503→filesystem
+   504→network
+   505→ai
+   506→hardware
+   507→process
+   508→unsafe
+   509→
+   510→El runtime debe poder negar capacidades.
+   511→
+   512→Ejemplo:
+   513→
+   514→ailang run app.ailang --allow filesystem.read --allow ai.query
+   515→
+   516→Todo lo no autorizado debe ser DENIED por defecto.
+   517→
+   518→Definir claramente el significado de:
+   519→- volatile,
+   520→- ephemeral,
+   521→- session,
+   522→- persistent.
+   523→
+   524→No afirmar “Zero-Footprint” si técnicamente no está garantizado.
+   525→
+   526→==================================================
+   527→FASE 12 — INTERPRETER Y VM 100% CONFORMES
+   528→==================================================
+   529→
+   530→Crear una suite de conformidad.
+   531→
+   532→TODO programa válido de la especificación debe producir el mismo comportamiento en:
+   533→
+   534→Interpreter
+   535→VM
+   536→futuros backends
+   537→
+   538→Debe coincidir:
+   539→
+   540→- resultado,
+   541→- errores,
+   542→- excepciones,
+   543→- side effects,
+   544→- scope,
+   545→- closures,
+   546→- mutabilidad,
+   547→- orden de evaluación,
+   548→- async,
+   549→- await,
+   550→- spawn,
+   551→- channels,
+   552→- generators.
+   553→
+   554→Corregir especialmente cualquier diferencia existente en:
+   555→
+   556→- mutable closures,
+   557→- yield,
+   558→- generators,
+   559→- interpolated strings,
+   560→- async/await,
+   561→- spawn/channels,
+   562→- records,
+   563→- interfaces,
+   564→- enums,
+   565→- pattern matching.
+   566→
+   567→Regla:
+   568→Interpreter == VM
+   569→
+   570→No marcar una versión estable si existen divergencias conocidas.
+   571→
+   572→==================================================
+   573→FASE 13 — BYTECODE
+   574→==================================================
+   575→
+   576→Diseñar un formato .ailc profesional:
+   577→
+   578→Header
+   579→Metadata
+   580→Language version
+   581→Runtime version
+   582→Bytecode version
+   583→Target
+   584→Constants
+   585→Code
+   586→Symbols
+   587→Debug info
+   588→Capabilities
+   589→Dependencies
+   590→Checksum
+   591→Signature
+   592→
+   593→Implementar validación al cargar bytecode.
+   594→
+   595→Nunca ejecutar bytecode corrupto o incompatible.
+   596→
+   597→==================================================
+   598→FASE 14 — VM PROFESIONAL
+   599→==================================================
+   600→
+   601→Implementar:
+   602→
+   603→- call frames,
+   604→- locals,
+   605→- globals,
+   606→- closures,
+   607→- upvalues,
+   608→- exceptions,
+   609→- generators,
+   610→- async,
+   611→- await,
+   612→- tasks,
+   613→- channels,
+   614→- pattern matching,
+   615→- class dispatch,
+   616→- method dispatch,
+   617→- module loading.
+   618→
+   619→Crear tests unitarios y de integración para cada opcode.
+   620→
+   621→Crear un opcode coverage report.
+   622→
+   623→==================================================
+   624→FASE 15 — MEMORIA Y RUNTIME
+   625→==================================================
+   626→
+   627→Diseñar formalmente:
+   628→
+   629→- object model,
+   630→- allocation,
+   631→- lifetime,
+   632→- garbage collection o estrategia equivalente,
+   633→- references,
+   634→- closures,
+   635→- cyclic structures,
+   636→- weak references si son necesarias,
+   637→- memory limits.
+   638→
+   639→Priorizar un runtime administrado estable antes de intentar optimizaciones extremas.
+   640→
+   641→==================================================
+   642→FASE 16 — CONCURRENCIA
+   643→==================================================
+   644→
+   645→Formalizar:
+   646→
+   647→Task[T]
+   648→Future[T]
+   649→Generator[T]
+   650→Channel[T]
+   651→
+   652→Implementar:
+   653→
+   654→- scheduler,
+   655→- task queue,
+   656→- cancellation,
+   657→- timeout,
+   658→- backpressure,
+   659→- channel close,
+   660→- structured concurrency,
+   661→- error propagation,
+   662→- deadlock diagnostics.
+   663→
+   664→No depender de threads de Python sin una política clara de runtime.
+   665→
+   666→==================================================
+   667→FASE 17 — MODULE SYSTEM
+   668→==================================================
+   669→
+   670→Formalizar:
+   671→
+   672→import
+   673→export
+   674→module
+   675→package
+   676→namespace
+   677→
+   678→Implementar:
+   679→
+   680→- resolución,
+   681→- paths,
+   682→- aliases,
+   683→- circular dependency detection,
+   684→- version constraints,
+   685→- cache,
+   686→- secure loading.
+   687→
+   688→Crear tests de módulos.
+   689→
+   690→==================================================
+   691→FASE 18 — STANDARD LIBRARY
+   692→==================================================
+   693→
+   694→Consolidar y documentar:
+   695→
+   696→io
+   697→fs
+   698→math
+   699→strings
+   700→collections
+   701→json
+   702→regex
+   703→time
+   704→http
+   705→crypto
+   706→system
+   707→concurrency
+   708→database
+   709→ai
+   710→tensor
+   711→
+   712→Cada módulo debe tener:
+   713→
+   714→- API estable,
+   715→- documentación,
+   716→- tests,
+   717→- manejo de errores,
+   718→- capability requirements.
+   719→
+   720→==================================================
+   721→FASE 19 — DATABASE
+   722→==================================================
+   723→
+   724→Completar SQLite.
+   725→
+   726→Completar PostgreSQL.
+   727→
+   728→PostgreSQL debe tener realmente:
+   729→
+   730→- connection pool,
+   731→- CRUD,
+   732→- transactions,
+   733→- prepared statements,
+   734→- timeout,
+   735→- retry,
+   736→- migrations,
+   737→- error handling,
+   738→- secure credentials.
+   739→
+   740→No dejar métodos falsamente implementados ni retornar [] como sustituto de una operación real.
+   741→
+   742→==================================================
+   743→FASE 20 — PACKAGE MANAGER
+   744→==================================================
+   745→
+   746→Evolucionar el sistema de paquetes.
+   747→
+   748→Soportar:
+   749→
+   750→ailang init
+   751→ailang package install
+   752→ailang package remove
+   753→ailang package update
+   754→ailang package list
+   755→ailang package build
+   756→ailang package publish
+   757→
+   758→Crear:
+   759→
+   760→ailang.toml
+   761→ailang.lock
+   762→
+   763→Implementar:
+   764→
+   765→- semantic versioning,
+   766→- dependency resolution,
+   767→- transitive dependencies,
+   768→- registry,
+   769→- cache,
+   770→- hashes,
+   771→- checksum verification,
+   772→- package signing,
+   773→- namespaces,
+   774→- offline mode.
+   775→
+   776→==================================================
+   777→FASE 21 — CLI
+   778→==================================================
+   779→
+   780→Implementar:
+   781→
+   782→ailang new
+   783→ailang init
+   784→ailang run
+   785→ailang build
+   786→ailang check
+   787→ailang test
+   788→ailang fmt
+   789→ailang lint
+   790→ailang repl
+   791→ailang debug
+   792→ailang profile
+   793→ailang doc
+   794→ailang package
+   795→ailang publish
+   796→ailang install
+   797→ailang clean
+   798→ailang doctor
+   799→ailang version
+   800→
+   801→Crear:
+   802→
+   803→ailang doctor
+   804→
+   805→que detecte:
+   806→
+   807→- runtime,
+   808→- compiler,
+   809→- VM,
+   810→- stdlib,
+   811→- database,
+   812→- LSP,
+   813→- debugger,
+   814→- backends,
+   815→- dependencias.
+   816→
+   817→==================================================
+   818→FASE 22 — REPL
+   819→==================================================
+   820→
+   821→Crear una REPL profesional:
+   822→
+   823→ailang repl
+   824→
+   825→Debe soportar:
+   826→
+   827→- multiline,
+   828→- history,
+   829→- autocomplete,
+   830→- inspect,
+   831→- type display,
+   832→- errors,
+   833→- imports,
+   834→- functions,
+   835→- classes,
+   836→- async cuando sea viable.
+   837→
+   838→==================================================
+   839→FASE 23 — FORMATTER
+   840→==================================================
+   841→
+   842→Crear:
+   843→
+   844→ailang fmt
+   845→
+   846→Debe formatear desde AST, no mediante reemplazos frágiles de texto.
+   847→
+   848→Debe ser determinista.
+   849→
+   850→==================================================
+   851→FASE 24 — LINTER
+   852→==================================================
+   853→
+   854→Crear:
+   855→
+   856→ailang lint
+   857→
+   858→Detectar:
+   859→
+   860→- unused variables,
+   861→- unused imports,
+   862→- shadowing,
+   863→- unreachable code,
+   864→- missing return,
+   865→- suspicious conversions,
+   866→- unsafe effects,
+   867→- missing capabilities,
+   868→- deprecated APIs,
+   869→- unreachable branches.
+   870→
+   871→==================================================
+   872→FASE 25 — LSP
+   873→==================================================
+   874→
+   875→Completar:
+   876→
+   877→- autocomplete,
+   878→- hover,
+   879→- go to definition,
+   880→- go to declaration,
+   881→- find references,
+   882→- rename,
+   883→- diagnostics,
+   884→- semantic tokens,
+   885→- document symbols,
+   886→- workspace symbols,
+   887→- format,
+   888→- code actions,
+   889→- signature help,
+   890→- inlay hints.
+   891→
+   892→==================================================
+   893→FASE 26 — DEBUGGER / DAP
+   894→==================================================
+   895→
+   896→Implementar:
+   897→
+   898→- breakpoints,
+   899→- conditional breakpoints,
+   900→- step over,
+   901→- step into,
+   902→- step out,
+   903→- continue,
+   904→- pause,
+   905→- locals,
+   906→- globals,
+   907→- call stack,
+   908→- watch expressions,
+   909→- exception breakpoints,
+   910→- source maps.
+   911→
+   912→==================================================
+   913→FASE 27 — PROFILER
+   914→==================================================
+   915→
+   916→Crear:
+   917→
+   918→ailang profile
+   919→
+   920→Medir:
+   921→
+   922→- startup,
+   923→- parsing,
+   924→- compilation,
+   925→- VM,
+   926→- functions,
+   927→- allocations,
+   928→- memory,
+   929→- tasks,
+   930→- AI calls,
+   931→- database,
+   932→- IO.
+   933→
+   934→==================================================
+   935→FASE 28 — TESTING PROFESIONAL
+   936→==================================================
+   937→
+   938→Aumentar cobertura progresivamente.
+   939→
+   940→Objetivo inicial:
+   941→
+   942→1000+ tests.
+   943→
+   944→Crear categorías:
+   945→
+   946→unit
+   947→integration
+   948→semantic
+   949→compiler
+   950→VM
+   951→conformance
+   952→negative
+   953→security
+   954→concurrency
+   955→database
+   956→stdlib
+   957→CLI
+   958→LSP
+   959→DAP
+   960→
+   961→Agregar property-based testing.
+   962→
+   963→Agregar fuzzing para:
+   964→
+   965→lexer
+   966→parser
+   967→typechecker
+   968→bytecode loader
+   969→VM
+   970→
+   971→Agregar tests de regresión para cada bug corregido.
+   972→
+   973→==================================================
+   974→FASE 29 — CI/CD
+   975→==================================================
+   976→
+   977→Configurar CI para:
+   978→
+   979→- Windows,
+   980→- Linux,
+   981→- macOS,
+   982→- versiones soportadas de Python mientras exista dependencia.
+   983→
+   984→Ejecutar:
+   985→
+   986→lint
+   987→type checking
+   988→unit tests
+   989→integration tests
+   990→conformance tests
+   991→security tests
+   992→fuzz smoke tests
+   993→package build
+   994→documentation validation
+   995→
+   996→No permitir merge si falla la conformance suite.
+   997→
+   998→==================================================
+   999→FASE 30 — BENCHMARKS
+  1000→==================================================
+  1001→
+  1002→Crear benchmarks reproducibles:
+  1003→
+  1004→arithmetic
+  1005→loops
+  1006→function calls
+  1007→closures
+  1008→classes
+  1009→strings
+  1010→lists
+  1011→dicts
+  1012→exceptions
+  1013→modules
+  1014→JSON
+  1015→concurrency
+  1016→startup
+  1017→compile time
+  1018→memory
+  1019→AI operations
+  1020→tensor operations
+  1021→
+  1022→Comparar:
+  1023→
+  1024→Interpreter
+  1025→VM
+  1026→Native futuro
+  1027→
+  1028→Publicar resultados.
+  1029→
+  1030→==================================================
+  1031→FASE 31 — NATIVE COMPILER
+  1032→==================================================
+  1033→
+  1034→NO implementarlo antes de estabilizar AST → IR → VM.
+  1035→
+  1036→Después:
+  1037→
+  1038→AIR
+  1039→ ↓
+  1040→LLVM IR
+  1041→ ↓
+  1042→native code
+  1043→
+  1044→Targets iniciales:
+  1045→
+  1046→x86_64
+  1047→ARM64
+  1048→
+  1049→Sistemas:
+  1050→
+  1051→Windows
+  1052→Linux
+  1053→macOS
+  1054→
+  1055→==================================================
+  1056→FASE 32 — WASM
+  1057→==================================================
+  1058→
+  1059→Agregar backend:
+  1060→
+  1061→AIR → WASM
+  1062→
+  1063→Permitir:
+  1064→
+  1065→ailang build --target wasm
+  1066→
+  1067→Objetivos:
+  1068→
+  1069→browser
+  1070→serverless
+  1071→edge
+  1072→sandbox
+  1073→
+  1074→==================================================
+  1075→FASE 33 — TENSOR Y AI RUNTIME
+  1076→==================================================
+  1077→
+  1078→Crear un tipo Tensor profesional.
+  1079→
+  1080→Soportar:
+  1081→
+  1082→dtype
+  1083→shape
+  1084→device
+  1085→memory layout
+  1086→operations
+  1087→matmul
+  1088→softmax
+  1089→normalization
+  1090→embedding
+  1091→
+  1092→Diseñar:
+  1093→
+  1094→CPU backend
+  1095→GPU backend
+  1096→NPU backend
+  1097→TPU backend
+  1098→
+  1099→No afirmar soporte real de GPU/NPU/TPU mientras el backend sea únicamente fallback/stub.
+  1100→
+  1101→==================================================
+  1102→FASE 34 — HARDWARE ABSTRACTION LAYER
+  1103→==================================================
+  1104→
+  1105→Diseñar:
+  1106→
+  1107→Device
+  1108→Tensor
+  1109→Kernel
+  1110→Model
+  1111→Inference
+  1112→
+  1113→Arquitectura:
+  1114→
+  1115→AILang
+  1116→ ↓
+  1117→Hardware Abstraction Layer
+  1118→ ├── CPU
+  1119→ ├── GPU
+  1120→ ├── NPU
+  1121→ └── TPU
+  1122→
+  1123→Cada backend debe indicar explícitamente:
+  1124→
+  1125→implemented
+  1126→experimental
+  1127→fallback
+  1128→unavailable
+  1129→
+  1130→==================================================
+  1131→FASE 35 — CRYPTOGRAPHY
+  1132→==================================================
+  1133→
+  1134→Crear API estable:
+  1135→
+  1136→hash
+  1137→signature
+  1138→key exchange
+  1139→random
+  1140→identity
+  1141→secure storage
+  1142→
+  1143→Para criptografía post-cuántica:
+  1144→NO inventar algoritmos.
+  1145→
+  1146→Usar implementaciones auditadas y documentar exactamente qué algoritmos están soportados.
+  1147→
+  1148→Separar:
+  1149→
+  1150→Language API
+  1151→Provider
+  1152→Backend
+  1153→
+  1154→==================================================
+  1155→FASE 36 — AGENT RUNTIME
+  1156→==================================================
+  1157→
+  1158→Evolucionar AgentIR.
+  1159→
+  1160→Definir primitivas para:
+  1161→
+  1162→agent
+  1163→goal
+  1164→observe
+  1165→reason
+  1166→plan
+  1167→act
+  1168→remember
+  1169→recall
+  1170→tool
+  1171→
+  1172→Diseñar un runtime de agentes controlado por capabilities.
+  1173→
+  1174→Evitar que un agente tenga acceso ilimitado al sistema.
+  1175→
+  1176→==================================================
+  1177→FASE 37 — OBSERVABILIDAD
+  1178→==================================================
+  1179→
+  1180→Crear:
+  1181→
+  1182→logs
+  1183→metrics
+  1184→tracing
+  1185→
+  1186→Pero:
+  1187→
+  1188→NO telemetry externa por defecto.
+  1189→
+  1190→Todo acceso externo debe requerir capability.
+  1191→
+  1192→==================================================
+  1193→FASE 38 — DOCUMENTACIÓN
+  1194→==================================================
+  1195→
+  1196→Crear:
+  1197→
+  1198→README.md
+  1199→LANGUAGE_SPEC.md
+  1200→ARCHITECTURE.md
+  1201→RUNTIME.md
+  1202→VM.md
+  1203→IR.md
+  1204→SECURITY.md
+  1205→COGNITIVE_RUNTIME.md
+  1206→AI.md
+  1207→HARDWARE.md
+  1208→PACKAGE_MANAGER.md
+  1209→LSP.md
+  1210→DAP.md
+  1211→CONTRIBUTING.md
+  1212→CHANGELOG.md
+  1213→ROADMAP.md
+  1214→
+  1215→Toda documentación debe coincidir con el código.
+  1216→
+  1217→==================================================
+  1218→FASE 39 — REORGANIZACIÓN DEL REPOSITORIO
+  1219→==================================================
+  1220→
+  1221→Proponer una estructura similar a:
+  1222→
+  1223→ailang/
+  1224→├── frontend/
+  1225→├── semantic/
+  1226→├── ir/
+  1227→├── compiler/
+  1228→├── runtime/
+  1229→├── vm/
+  1230→├── stdlib/
+  1231→├── ai/
+  1232→├── cognitive/
+  1233→├── agents/
+  1234→├── security/
+  1235→├── hardware/
+  1236→├── tooling/
+  1237→│   ├── lsp/
+  1238→│   ├── dap/
+  1239→│   ├── formatter/
+  1240→│   ├── linter/
+  1241→│   └── profiler/
+  1242→├── package/
+  1243→├── tests/
+  1244→├── benchmarks/
+  1245→├── docs/
+  1246→└── examples/
+  1247→
+  1248→No mover archivos sin actualizar imports, tests y documentación.
+  1249→
+  1250→==================================================
+  1251→FASE 40 — CALIDAD DEL CÓDIGO
+  1252→==================================================
+  1253→
+  1254→Aplicar:
+  1255→
+  1256→- type hints,
+  1257→- dataclasses donde correspondan,
+  1258→- interfaces/protocols,
+  1259→- separación de responsabilidades,
+  1260→- dependency injection donde sea útil,
+  1261→- errores explícitos,
+  1262→- evitar global state,
+  1263→- evitar duplicación,
+  1264→- evitar funciones gigantes,
+  1265→- evitar imports circulares.
+  1266→
+  1267→Mantener APIs internas claras.
+  1268→
+  1269→==================================================
+  1270→FASE 41 — COMPATIBILIDAD
+  1271→==================================================
+  1272→
+  1273→Toda nueva modificación debe preservar:
+  1274→
+  1275→- programas válidos existentes,
+  1276→- tests existentes,
+  1277→- stdlib,
+  1278→- CLI,
+  1279→- tooling.
+  1280→
+  1281→Si una modificación rompe una API:
+  1282→1. documentar,
+  1283→2. agregar migración,
+  1284→3. marcar deprecated,
+  1285→4. eliminar únicamente en una major release.
+  1286→
+  1287→==================================================
+  1288→FASE 42 — NO HACER CAMBIOS FALSOS
+  1289→==================================================
+  1290→
+  1291→PROHIBIDO:
+  1292→
+  1293→- dejar TODO fingiendo implementación completa,
+  1294→- dejar NotImplementedError en APIs declaradas como estables,
+  1295→- devolver [] o None como sustituto silencioso de funcionalidades no implementadas,
+  1296→- crear mocks permanentes donde se prometió funcionalidad real,
+  1297→- declarar GPU/NPU/TPU cuando solamente existe fallback,
+  1298→- declarar Zero-Footprint sin garantías técnicas,
+  1299→- ocultar errores para que pasen tests,
+  1300→- eliminar tests que fallen para conseguir CI verde,
+  1301→- cambiar expectativas de tests sin justificar la nueva semántica.
+  1302→
+  1303→==================================================
+  1304→FASE 43 — ROADMAP AUTOMÁTICO
+  1305→==================================================
+  1306→
+  1307→Después de auditar el repositorio, genera:
+  1308→
+  1309→ROADMAP.md
+  1310→
+  1311→Dividido en:
+  1312→
+  1313→P0 — bloqueadores
+  1314→P1 — estabilidad
+  1315→P2 — tooling
+  1316→P3 — optimización
+  1317→P4 — IA/hardware avanzado
+  1318→
+  1319→Para cada tarea:
+  1320→
+  1321→ID
+  1322→Prioridad
+  1323→Archivo/módulo
+  1324→Problema
+  1325→Solución
+  1326→Dependencias
+  1327→Riesgo
+  1328→Tests
+  1329→Estado
+  1330→
+  1331→==================================================
+  1332→FASE 44 — MATRIZ DE CONFORMIDAD
+  1333→==================================================
+  1334→
+  1335→Crear:
+  1336→
+  1337→CONFORMANCE_MATRIX.md
+  1338→
+  1339→Columnas:
+  1340→
+  1341→Feature
+  1342→Lexer
+  1343→Parser
+  1344→AST
+  1345→Semantic
+  1346→Typechecker
+  1347→HIR
+  1348→MIR
+  1349→AIR
+  1350→Interpreter
+  1351→Bytecode
+  1352→VM
+  1353→Stdlib
+  1354→LSP
+  1355→DAP
+  1356→Tests
+  1357→Status
+  1358→
+  1359→Ninguna feature se considera completa si tiene huecos críticos.
+  1360→
+  1361→==================================================
+  1362→FASE 45 — MATRIZ DE SEGURIDAD
+  1363→==================================================
+  1364→
+  1365→Crear:
+  1366→
+  1367→SECURITY_MATRIX.md
+  1368→
+  1369→Para cada operación:
+  1370→
+  1371→filesystem
+  1372→network
+  1373→process
+  1374→database
+  1375→AI
+  1376→hardware
+  1377→environment
+  1378→reflection
+  1379→
+  1380→indicar:
+  1381→
+  1382→effect
+  1383→required capability
+  1384→default policy
+  1385→sandbox support
+  1386→audit event
+  1387→tests
+  1388→
+  1389→==================================================
+  1390→FASE 46 — RELEASE ENGINEERING
+  1391→==================================================
+  1392→
+  1393→Crear proceso reproducible:
+  1394→
+  1395→lint
+  1396→test
+  1397→conformance
+  1398→security
+  1399→build
+  1400→package
+  1401→documentation
+  1402→version
+  1403→changelog
+  1404→artifact checksum
+  1405→
+  1406→Generar artefactos verificables.
+  1407→
+  1408→==================================================
+  1409→FASE 47 — CRITERIOS PARA AILANG 1.0
+  1410→==================================================
+  1411→
+  1412→NO declarar AILang 1.0 hasta cumplir:
+  1413→
+  1414→- lenguaje formalmente especificado,
+  1415→- frontend único,
+  1416→- AST estable,
+  1417→- semantic analyzer,
+  1418→- type system,
+  1419→- effects,
+  1420→- capabilities,
+  1421→- HIR/MIR/AIR,
+  1422→- interpreter,
+  1423→- VM,
+  1424→- interpreter/VM equivalentes,
+  1425→- bytecode versionado,
+  1426→- modules,
+  1427→- exceptions,
+  1428→- concurrency estable,
+  1429→- generators,
+  1430→- async/await,
+  1431→- classes,
+  1432→- records,
+  1433→- enums,
+  1434→- pattern matching,
+  1435→- stdlib estable,
+  1436→- package manager,
+  1437→- formatter,
+  1438→- linter,
+  1439→- LSP,
+  1440→- debugger,
+  1441→- tests robustos,
+  1442→- fuzzing,
+  1443→- security tests,
+  1444→- documentación coherente,
+  1445→- CI multiplataforma.
+  1446→
+  1447→Native/LLVM, WASM, GPU/NPU/TPU y capacidades avanzadas de agentes pueden estar en fases posteriores si están claramente marcadas como experimentales.
+  1448→
+  1449→==================================================
+  1450→MODO DE EJECUCIÓN
+  1451→==================================================
+  1452→
+  1453→Trabaja por fases.
+  1454→
+  1455→NO intentes modificar todo el repositorio de golpe.
+  1456→
+  1457→Para cada fase:
+  1458→
+  1459→1. Analiza.
+  1460→2. Identifica archivos afectados.
+  1461→3. Explica el problema.
+  1462→4. Implementa la solución.
+  1463→5. Ejecuta tests.
+  1464→6. Ejecuta conformance tests.
+  1465→7. Ejecuta lint/type checks.
+  1466→8. Revisa regresiones.
+  1467→9. Documenta.
+  1468→10. Continúa con la siguiente fase solamente si la anterior queda estable.
+  1469→
+  1470→Si encuentras una contradicción entre documentación y código:
+  1471→- NO ocultarla.
+  1472→- Determinar cuál debe ser la semántica normativa.
+  1473→- Documentar la decisión.
+  1474→- Actualizar código y tests.
+  1475→
+  1476→Si encuentras dos implementaciones:
+  1477→- determinar cuál es superior,
+  1478→- migrar la funcionalidad válida,
+  1479→- eliminar duplicidad solamente después de comprobar equivalencia.
+  1480→
+  1481→==================================================
+  1482→REGLA DE AUTONOMÍA TÉCNICA
+  1483→==================================================
+  1484→
+  1485→No me preguntes cosas que puedan determinarse analizando el repositorio.
+  1486→
+  1487→Toma decisiones técnicas razonables.
+  1488→
+  1489→Cuando existan varias alternativas:
+  1490→- evalúalas,
+  1491→- elige la arquitectura más mantenible,
+  1492→- explica brevemente por qué,
+  1493→- implementa.
+  1494→
+  1495→No te limites a señalar problemas.
+  1496→
+  1497→CORRIGE.
+  1498→
+  1499→==================================================
+  1500→ENTREGABLES FINALES
+  1501→==================================================
+  1502→
+  1503→Al finalizar cada gran etapa entregar:
+  1504→
+  1505→1. Código corregido.
+  1506→2. Tests.
+  1507→3. Documentación.
+  1508→4. Changelog.
+  1509→5. Matriz de conformidad.
+  1510→6. Estado del roadmap.
+  1511→7. Problemas pendientes.
+  1512→8. Riesgos técnicos.
+  1513→9. Métricas:
+  1514→   - tests,
+  1515→   - cobertura,
+  1516→   - features conformes,
+  1517→   - módulos completos,
+  1518→   - stubs restantes,
+  1519→   - TODO restantes,
+  1520→   - warnings,
+  1521→   - benchmark básico.
+  1522→
+  1523→==================================================
+  1524→OBJETIVO FINAL
+  1525→==================================================
+  1526→
+  1527→Transformar AILang de un conjunto de componentes avanzados pero parcialmente divergentes en:
+  1528→
+  1529→UN LENGUAJE DE PROGRAMACIÓN COHERENTE
+  1530→
+  1531→con:
+  1532→
+  1533→- lenguaje formal,
+  1534→- compilador,
+  1535→- IR,
+  1536→- intérprete,
+  1537→- VM,
+  1538→- runtime,
+  1539→- sistema de tipos,
+  1540→- seguridad por capacidades,
+  1541→- effects system,
+  1542→- concurrencia,
+  1543→- módulos,
+  1544→- stdlib,
+  1545→- package manager,
+  1546→- LSP,
+  1547→- debugger,
+  1548→- formatter,
+  1549→- linter,
+  1550→- profiler,
+  1551→- testing/fuzzing,
+  1552→- runtime cognitivo,
+  1553→- agentes,
+  1554→- tensor/AI,
+  1555→- backends hardware,
+  1556→- futuro native/WASM.
+  1557→
+  1558→PRINCIPIO FINAL:
+  1559→
+  1560→NO QUIERO UNA DEMO.
+  1561→NO QUIERO MOCKS.
+  1562→NO QUIERO FUNCIONALIDADES FALSAMENTE COMPLETAS.
+  1563→
+  1564→QUIERO CONVERTIR AILang EN UNA BASE TECNOLÓGICA REAL, COHERENTE, EXTENSIBLE, SEGURA, TESTEABLE Y PREPARADA PARA EVOLUCIONAR DURANTE AÑOS.
+  1565→
+  1566→Conserva lo que funciona.
+  1567→Corrige lo que está mal.
+  1568→Integra lo que está duplicado.
+  1569→Formaliza lo ambiguo.
+  1570→Implementa lo incompleto.
+  1571→Prueba todo.
+  1572→Documenta todo.
+  1573→Y nunca declares terminado aquello que técnicamente no lo esté.
+  1574→
