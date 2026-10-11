@@ -42,6 +42,10 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# AUDIT FIX: find actual project root (may be nested under work/)
+_ROOT_ALT = ROOT / 'work' / 'ailang_repo' / 'ailang-core-v7.2'
+if (_ROOT_ALT / 'ailang' / '__init__.py').exists():
+    ROOT = _ROOT_ALT
 sys.path.insert(0, str(ROOT))
 
 from ailang.versions import (
@@ -346,6 +350,7 @@ match x {
         _check_llvmlite(),
         "llvmlite no instalado. Instala con: pip install llvmlite"
     )
+    @unittest.skipUnless(_check_llvmlite(), "llvmlite not installed")
     def test_34_native_backend(self):
         """Native backend: LLVM IR generation."""
         from ailang.backends.native import compile_to_llvm_ir

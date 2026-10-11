@@ -1,10 +1,31 @@
-skills/
-node_modules/
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
 
-# Non-project directories
-download/
-scripts/
-tool-results/
-upload/
-work/
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Temp
+*.tmp
+*.log
+*.db
+*.sqlite3
 .env
