@@ -706,3 +706,33 @@ Stage Summary:
     git push origin main
 - Después del push, monitorear el workflow run en:
     https://github.com/Nexusolutions/nexus-ailang-core/actions
+
+---
+Task ID: P6-fix
+Agent: Main (CI failure diagnosis + fix)
+Task: Verificar y corregir errores del CI de GitHub
+
+Work Log:
+- Leído el reporte del usuario: 10 errors (9 test jobs + 1 lint job), 11 warnings (Node.js 20 deprecation, Ubuntu 26 migration), 8 notices (macOS arm64 capacity).
+- Reproducido el fallo localmente con `/home/z/my-project/scripts/reproduce_ci.sh` (fresh venv, pasos exactos del CI):
+  * Descubierto: `tests/test_coverage_gaps.py::TestJIT::test_jit_record_call` y `::test_jit_stats` FALLAN.
+  * Causa raíz: `JITCompiler.record_call()` retorna False temprano cuando llvmlite no está instalado, sin siquiera registrar la llamada en `_profiles`. CI no instala llvmlite.
+- Aplicado fix en `ailang/backends/native/jit.py`: separar profiling (siempre se ejecuta) de compilación (requiere llvmlite). `record_call()` ahora SIEMPRE registra en `_profiles`; solo `compile_function()` chequea `_llvm_available`.
+- Reproducido el lint job localmente con `/home/z/my-project/scripts/reproduce_lint.sh`: pasa. Pero el YAML tenía un `python -c "..."` multi-line frágil. Sustituido por `scripts/check_format_idempotency.py` (49 LOC) — más limpio, testeable, sin quoting issues.
+- Descubierto mismatch de versión: `pyproject.toml` declaraba `version = "5.7.0"` pero `ailang/versions.py` dice `1.1.0`. Corregido a `1.1.0` en `pyproject.toml`.
+- Verificado localmente con `./scripts/smoke_test.sh`: 8/8 pasos OK.
+- Verificado con `reproduce_ci.sh` (fresh venv): 289 passed, 7 skipped, 1 xfailed, 0 failed.
+- Commit `d6ca225`: "fix(P6): CI failures — JIT profiling without llvmlite, lint YAML, version mismatch".
+
+Stage Summary:
+- 4 archivos cambiados:
+  * `ailang/backends/native/jit.py` (record_call: profiling always, compile if LLVM)
+  * `.github/workflows/ci.yml` (lint: use script file instead of multi-line python -c)
+  * `pyproject.toml` (version 5.7.0 → 1.1.0)
+  * `scripts/check_format_idempotency.py` (new, 49 LOC)
+- Commits pendientes de push (1): `d6ca225`
+- Push falla: este entorno no tiene credenciales GitHub (sin GH_TOKEN, sin ~/.ssh, sin ~/.git-credentials).
+- Para completar el push, el usuario debe ejecutar:
+    cd /home/z/my-project/work/ailang_repo/ailang-core-v7.2
+    git push origin main
+- Después del push, el CI debería pasar en los tres OS (ubuntu/windows/macos) × tres Python (3.11/3.12/3.13) + lint + conformance + cross-platform.
