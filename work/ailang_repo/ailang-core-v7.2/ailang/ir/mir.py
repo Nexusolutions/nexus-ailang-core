@@ -102,12 +102,21 @@ def lower_hir_to_mir(hir_fn) -> MIRFunction:
     for instr in hir_fn.body.instructions:
         mir_op = _OP_MAP.get(instr.op, instr.op.lower())
         mir_args = list(instr.args)
-        # Filter out LABEL pseudo-instructions (handled at AIR level)
+        # AUD-004/023: PRESERVE LABEL pseudo-instructions so AIR interpreter
+        # can resolve JUMP/JUMP_IF_FALSE targets. Previously stripped, which
+        # made control flow impossible in AIR.
         if mir_op == "label":
-            continue  # labels are resolved at AIR interpreter level
+            # Emit a LABEL marker (no-op execution-wise but tracked for jumps)
+            mir_instr = MIRInstruction(
+                op="label",
+                args=mir_args,  # [label_name]
+                result=None,
+                line=instr.line,
+            )
+            entry.instructions.append(mir_instr)
+            continue
 
         # Para binop/unop, solo el operador string (operands are on stack)
-        # No need to add None placeholders.
 
         mir_instr = MIRInstruction(
             op=mir_op,

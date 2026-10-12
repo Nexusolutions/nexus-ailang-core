@@ -143,14 +143,12 @@ class TestFormalConformance(unittest.TestCase):
                 )
 
             # Verificar paridad interp == air
-            # Nota: AIR interpreter no soporta control de flujo (if/while) todavía.
-            # Si air da ERROR o None, lo aceptamos como limitación conocida.
+            # AUD-004: AIR interpreter ahora soporta control flow via label resolution.
+            # Ya no skip-eamos divergencias para programas con if/while/for.
             if not isinstance(air, str) and air is not None and interp != air:
-                # Solo reportar si la divergencia no es por control de flujo
-                if "if" not in src and "while" not in src and "for" not in src:
-                    failures.append(
-                        f"INTERP≠AIR: src={src!r}\n  interp={interp!r}\n  air={air!r}"
-                    )
+                failures.append(
+                    f"INTERP≠AIR: src={src!r}\n  interp={interp!r}\n  air={air!r}"
+                )
 
             # Verificar que interp == expected
             if interp != expected:

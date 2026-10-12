@@ -1,14 +1,10 @@
 """ailang.runtime.air_interpreter — Intérprete AIR nativo (S1, T1).
 
 Ejecuta un AIRModule directamente sin pasar por el AST o la VM.
-T1: ahora con HIR decomposed en instrucciones stack-based, el AIR interpreter
-puede ejecutar programas directamente.
 
-Limitaciones actuales:
-- LABEL/JUMP aún no resuelven saltos (if/while se emiten pero los labels
-  no se procesan). Programs sin control flow funcionan.
-- MAKE_FUNCTION crea un callable que delega al Interpreter/VM.
-- IMPORT_MODULE no soportado (delegaría a VM module loader).
+AUD-004: ahora soporta control flow (if/while/for) via label resolution.
+Las LABEL pseudo-instructions se preservan en AIR y se usan para
+construir un mapa label→index al entrar a cada bloque.
 """
 from __future__ import annotations
 
@@ -16,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from ailang.ir.pipeline import compile_to_air
-from ailang.ir.air import AIRModule, AIRFunction, AIRBlock, AIRInstruction
+from ailang.ir.air import AIRModule, AIRFunction, AIRBlock, AIRInstruction, _LABEL_OP
 from ailang.runtime.capabilities import CapabilityContext, CapabilityError, get_default_context
 from ailang.runtime.air_runtime import verify_capabilities
 from ailang.lang.vm import (
@@ -39,6 +35,7 @@ class AIRFrame:
     locals: Dict[str, Any] = field(default_factory=dict)
     stack: List[Any] = field(default_factory=list)
     ip: int = 0
+    label_map: Dict[str, int] = field(default_factory=dict)  # AUD-004: label → instruction index
 
 
 class AIRFunctionValue:
@@ -50,6 +47,8 @@ class AIRFunctionValue:
 
 class AIRInterpreter:
     """Intérprete que ejecuta un AIRModule directamente (T1).
+
+    AUD-004: ahora soporta control flow (if/while/for) via label resolution.
 
     Uso:
       from ailang.ir.pipeline import compile_to_air
@@ -76,22 +75,43 @@ class AIRInterpreter:
         # Ejecutar globals_block si existe
         if air_module.globals_block is not None:
             frame = AIRFrame()
+            self._build_label_map(air_module.globals_block, frame)
             return self._exec_block(air_module.globals_block, frame)
         return None
 
+    def _build_label_map(self, block: AIRBlock, frame: AIRFrame) -> None:
+        """AUD-004: construye mapa label → instruction index para resolución de saltos."""
+        for i, instr in enumerate(block.instructions):
+            if instr.opcode == _LABEL_OP:
+                if instr.operands:
+                    label_name = str(instr.operands[0])
+                    frame.label_map[label_name] = i
+
     def _exec_block(self, block: AIRBlock, frame: AIRFrame) -> Any:
-        """Ejecuta un bloque AIR hasta RETURN o fin."""
+        """Ejecuta un bloque AIR hasta RETURN o fin.
+
+        AUD-004: soporta JUMP/JUMP_IF_FALSE via label_map.
+        """
         instructions = block.instructions
         while frame.ip < len(instructions):
             instr = instructions[frame.ip]
+
+            # AUD-004: LABEL pseudo-instructions are no-ops (just markers)
+            if instr.opcode == _LABEL_OP:
+                frame.ip += 1
+                continue
+
             frame.ip += 1
-            result = self._exec_instruction(instr, frame)
+            result = self._exec_instruction(instr, frame, block)
             if result is _RETURN:
                 return frame.stack.pop() if frame.stack else None
+            if result is _JUMPED:
+                # ip was updated by JUMP/JUMP_IF_FALSE; continue from new position
+                continue
         # Sin RETURN explícito: retornar top of stack o None
         return frame.stack[-1] if frame.stack else None
 
-    def _exec_instruction(self, instr: AIRInstruction, frame: AIRFrame) -> Any:
+    def _exec_instruction(self, instr: AIRInstruction, frame: AIRFrame, block: AIRBlock) -> Any:
         op = instr.opcode
 
         if op == LOAD_CONST:
@@ -136,18 +156,35 @@ class AIRInterpreter:
             return _RETURN
 
         elif op == JUMP:
-            # AUD-004: Labels not resolved yet — skip (no-op for now).
-            # This means AIR interpreter does NOT support control flow (if/while).
-            # Programs with control flow should use --vm or --interp.
-            # Documented limitation: AIR is straight-line-only in v1.1.0.
-            pass
+            # AUD-004: resolve label to instruction index and jump
+            target_label = str(instr.operands[0]) if instr.operands else ""
+            target_ip = frame.label_map.get(target_label)
+            if target_ip is not None:
+                frame.ip = target_ip
+                return _JUMPED
+            # Label not found: no-op (fall through)
 
         elif op == JUMP_IF_FALSE:
-            # AUD-004: If we pop the condition, we lose it. But we can't
-            # jump to the else block because labels aren't resolved.
-            # Pop the condition to maintain stack consistency, but don't jump.
-            if frame.stack:
-                frame.stack.pop()
+            # AUD-004: pop condition, jump to label if falsy
+            cond = frame.stack.pop() if frame.stack else None
+            if not _truthy(cond):
+                target_label = str(instr.operands[0]) if instr.operands else ""
+                target_ip = frame.label_map.get(target_label)
+                if target_ip is not None:
+                    frame.ip = target_ip
+                    return _JUMPED
+            # Condition true: fall through (next instruction)
+
+        elif op == JUMP_IF_TRUE:
+            # AUD-004: pop condition, jump to label if truthy
+            cond = frame.stack.pop() if frame.stack else None
+            if _truthy(cond):
+                target_label = str(instr.operands[0]) if instr.operands else ""
+                target_ip = frame.label_map.get(target_label)
+                if target_ip is not None:
+                    frame.ip = target_ip
+                    return _JUMPED
+            # Condition false: fall through
 
         elif op == POP:
             if frame.stack:
@@ -217,13 +254,21 @@ class AIRInterpreter:
             frame.locals[p] = a
         if not air_fn.blocks:
             return None
+        # AUD-004: build label map for the function's first block
+        self._build_label_map(air_fn.blocks[0], frame)
         return self._exec_block(air_fn.blocks[0], frame)
 
 
 class _Return:
     pass
 
+
+class _Jumped:
+    pass
+
+
 _RETURN = _Return()
+_JUMPED = _Jumped()
 
 
 # --- API pública ---
@@ -233,11 +278,12 @@ def run_air(
     *,
     use_vm: bool = False,
     ctx: Optional[CapabilityContext] = None,
-    optimize: bool = False,  # T1: desactivado por defecto; DCE no soporta stack-based aún
+    optimize: bool = False,
 ) -> Any:
     """Compila source → AIR, verifica capabilities, ejecuta via AIR interpreter.
 
     T1: ahora ejecuta directamente via AIRInterpreter (no delega a VM).
+    AUD-004: ahora soporta control flow (if/while/for).
     Si hay opcodes no soportados (MAKE_CLASS, etc.), hace fallback a VM/Interpreter.
     """
     air = compile_to_air(source, optimize=optimize)

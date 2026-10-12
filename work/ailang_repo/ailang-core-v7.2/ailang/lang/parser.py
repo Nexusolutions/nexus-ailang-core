@@ -260,7 +260,16 @@ class Parser:
         while self.cur().kind not in ("RBRACE", "EOF"):
             self.skip_nl()
             if self.cur().kind == "IDENT":
-                fields.append(self.adv().value)
+                # AUD-020: soportar type annotation opcional en fields
+                # Formato: name  o  name: Type  o  name: List[int]
+                field_name = self.adv().value
+                if self.cur().kind == "COLON":
+                    self.adv()  # consume :
+                    type_ann = self.parse_type_annotation()
+                    # Guardamos como tupla (name, type_ann) si hay type, o solo name si no
+                    fields.append((field_name, type_ann))
+                else:
+                    fields.append(field_name)
                 if self.cur().kind == "COMMA":
                     self.adv()
             elif self.cur().kind == "RBRACE":
@@ -310,7 +319,8 @@ class Parser:
         type_ann = None
         if self.cur().kind == "COLON":
             self.adv()
-            type_ann = self.expect("IDENT").value
+            # AUD-019: usar parse_type_annotation para soportar List[int], Dict[string, int], etc.
+            type_ann = self.parse_type_annotation()
         self.expect("EQ")
         value = self.expression()
         return A.Const(name, value, type_ann, kw.line)
@@ -517,6 +527,12 @@ class Parser:
         if t.kind == "KEYWORD" and t.value == "await":
             self.adv()
             return A.Await(self.unary(), t.line)
+        # AUD-010: spawn es expression (no solo statement).
+        # Permite: let f = spawn worker()
+        if t.kind == "KEYWORD" and t.value == "spawn":
+            self.adv()
+            expr = self.expression()
+            return A.Spawn(expr, t.line)
         if t.kind == "KEYWORD" and t.value == "fn":
             # lambda: fn(a, b) { body }
             self.adv()

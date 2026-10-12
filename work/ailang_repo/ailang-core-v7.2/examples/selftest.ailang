@@ -1,0 +1,83 @@
+// selftest.ailang — Test de regresión mínimo que verifica el runtime.
+// Ejecutar: python -m ailang examples/selftest.ailang
+
+let passed = 0
+let failed = 0
+
+fn check(cond, msg) {
+    if cond {
+        passed = passed + 1
+    } else {
+        failed = failed + 1
+        print("FAIL: ${msg}")
+    }
+}
+
+// Arithmetic
+check(1 + 2 == 3, "addition")
+check(10 - 4 == 6, "subtraction")
+check(3 * 4 == 12, "multiplication")
+check(10 / 2 == 5, "division")
+
+// Strings
+check("hello" + " " + "world" == "hello world", "string concat")
+check(len("abc") == 3, "string length")
+
+// Lists
+let xs = [1, 2, 3]
+check(len(xs) == 3, "list length")
+check(xs[0] == 1, "list index")
+
+// Dicts
+let d = {"a": 1, "b": 2}
+check(d["a"] == 1, "dict access")
+check(d["b"] == 2, "dict access 2")
+
+// Functions
+fn fib(n) {
+    if n < 2 { return n }
+    return fib(n - 1) + fib(n - 2)
+}
+check(fib(10) == 55, "fibonacci")
+
+// Control flow
+let sum = 0
+for i in [1, 2, 3, 4, 5] {
+    sum = sum + i
+}
+check(sum == 15, "for loop sum")
+
+let count = 0
+let n = 5
+while n > 0 {
+    count = count + 1
+    n = n - 1
+}
+check(count == 5, "while loop")
+
+// Classes
+class Counter {
+    fn init(start) { self.val = start }
+    fn incr() { self.val = self.val + 1; return self.val }
+}
+let c = Counter(10)
+check(c.incr() == 11, "class method")
+check(c.incr() == 12, "class method 2")
+
+// Try/catch
+try {
+    throw "test error"
+    check(false, "throw should have jumped")
+} catch e {
+    check(e == "test error", "catch caught error")
+}
+
+print("")
+print("=== selftest results ===")
+print("passed: ${passed}")
+print("failed: ${failed}")
+if failed > 0 {
+    print("FAIL")
+} else {
+    print("ALL OK")
+}

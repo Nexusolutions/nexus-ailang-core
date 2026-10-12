@@ -79,9 +79,23 @@ class _AccelBackend(HardwareBackend):
         return self._to_host_array(ref.data)
 
     def matmul(self, a: TensorRef, b: TensorRef) -> TensorRef:
-        """Matrix multiplication en el dispositivo nativo."""
+        """Matrix multiplication en el dispositivo nativo.
+
+        AUD-052: requiere capability `hardware.gpu`/`hardware.npu`/`hardware.tpu`.
+        """
         if not self._ok:
             return self._cpu.matmul(a, b)
+
+        # AUD-052: capability check antes de usar hardware
+        from ailang.runtime.capabilities import require
+        cap_map = {
+            DeviceKind.GPU: "hardware.gpu",
+            DeviceKind.NPU: "hardware.npu",
+            DeviceKind.TPU: "hardware.tpu",
+        }
+        cap = cap_map.get(self.kind)
+        if cap:
+            require(cap, op_desc=f"{self.kind.name}.matmul()")
 
         # Usar la operación nativa del dispositivo
         result = self._native_matmul(a.data, b.data)
@@ -90,9 +104,24 @@ class _AccelBackend(HardwareBackend):
         return TensorRef(result, tuple(np_result.shape), str(np_result.dtype), self.kind)
 
     def vector_score(self, query: Sequence[float], docs: Sequence[Sequence[float]]) -> Sequence[float]:
-        """Cosine similarity en el dispositivo nativo."""
+        """Cosine similarity en el dispositivo nativo.
+
+        AUD-052: requiere capability `hardware.gpu`/`hardware.npu`/`hardware.tpu`.
+        """
         if not self._ok:
             return self._cpu.vector_score(query, docs)
+
+        # AUD-052: capability check antes de usar hardware
+        from ailang.runtime.capabilities import require
+        cap_map = {
+            DeviceKind.GPU: "hardware.gpu",
+            DeviceKind.NPU: "hardware.npu",
+            DeviceKind.TPU: "hardware.tpu",
+        }
+        cap = cap_map.get(self.kind)
+        if cap:
+            require(cap, op_desc=f"{self.kind.name}.vector_score()")
+
         return self._native_vector_score(query, docs)
 
     # --- Métodos que las subclases pueden override ---

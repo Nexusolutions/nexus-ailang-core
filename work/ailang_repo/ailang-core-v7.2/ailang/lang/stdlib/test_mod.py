@@ -1,4 +1,6 @@
 """Framework mínimo de tests en AILang / host."""
+from ailang.lang.errors import AILangRuntimeError
+
 _passed = 0
 _failed = 0
 _errors = []
@@ -16,7 +18,9 @@ def assert_true(cond, msg="assert_true failed"):
     else:
         _failed += 1
         _errors.append(str(msg))
-        raise AssertionError(msg)
+        # AUD-072: raise AILangRuntimeError (not Python's AssertionError)
+        # so try/catch del lenguaje AILang puede atraparlo
+        raise AILangRuntimeError(str(msg), code="E042")
 
 def assert_eq(a, b, msg=None):
     global _passed, _failed
@@ -26,15 +30,16 @@ def assert_eq(a, b, msg=None):
         _failed += 1
         m = msg or f"assert_eq: {a!r} != {b!r}"
         _errors.append(m)
-        raise AssertionError(m)
+        # AUD-072: raise AILangRuntimeError (not Python's AssertionError)
+        raise AILangRuntimeError(m, code="E042")
 
 def assert_raises(fn, *args):
     global _passed, _failed
     try:
         fn(*args)
         _failed += 1
-        raise AssertionError("assert_raises: no exception")
-    except AssertionError:
+        raise AILangRuntimeError("assert_raises: no exception", code="E042")
+    except AILangRuntimeError:
         raise
     except Exception:
         _passed += 1

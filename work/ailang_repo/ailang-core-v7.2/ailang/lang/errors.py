@@ -158,23 +158,27 @@ class ParseError(AILangError):
     DEFAULT_MESSAGE = "parse error"
 
 
-class TypeError(AILangError):  # noqa: A001 (intentional shadow of builtin)
+# AUD-029: Añadimos nombres con prefijo AILang* para evitar shadowing
+# de builtins Python. Los nombres antiguos se mantienen como aliases
+# para retrocompatibilidad.
+
+class AILangTypeError(AILangError):
     CODE = "E042"
     DEFAULT_MESSAGE = "type mismatch"
 
 
-class NameError(AILangError):  # noqa: A001
+class AILangNameError(AILangError):
     CODE = "E041"
     DEFAULT_MESSAGE = "name not defined"
 
 
-class ImportError(AILangError):  # noqa: A001
+class AILangImportError(AILangError):
     CODE = "E043"
     DEFAULT_MESSAGE = "module not found or import error"
 
 
 class AILangRuntimeError(AILangError):
-    """Alias para mantener retrocompatibilidad. Códigos E0xx."""
+    """Runtime error base. Códigos E0xx."""
     CODE = "E050"
     DEFAULT_MESSAGE = "runtime error"
 
@@ -182,42 +186,52 @@ class AILangRuntimeError(AILangError):
         super().__init__(message, frames=frames, **kwargs)
 
 
-class ValueError(AILangError):  # noqa: A001
+class AILangValueError(AILangError):
     CODE = "E051"
     DEFAULT_MESSAGE = "invalid value"
 
 
-class IndexError(AILangError):  # noqa: A001
+class AILangIndexError(AILangError):
     CODE = "E052"
     DEFAULT_MESSAGE = "index out of range"
 
 
-class AttributeError(AILangError):  # noqa: A001
+class AILangAttributeError(AILangError):
     CODE = "E053"
     DEFAULT_MESSAGE = "attribute not found"
 
 
-class SecurityError(AILangError):
+class SecurityError(AILangRuntimeError):
+    """Base para errores de seguridad.
+
+    AUD-003: hereda de AILangRuntimeError (no de AILangError directo) para que
+    try/catch del interpreter los atrape via la rama `except AILangRuntimeError`.
+    """
     CODE = "E060"
     DEFAULT_MESSAGE = "security violation"
 
 
 class CapabilityError(SecurityError):
+    """Violation de capability en runtime.
+
+    AUD-003: hereda de SecurityError → AILangRuntimeError, así try/catch
+    del lenguaje AILang puede atrapar violaciones de capability.
+    """
     CODE = "E061"
     DEFAULT_MESSAGE = "missing required capability"
 
 
-class TimeoutError(AILangError):  # noqa: A001
+class AILangTimeoutError(AILangError):
     CODE = "E070"
     DEFAULT_MESSAGE = "operation timed out"
 
 
-class MemoryError(AILangError):  # noqa: A001
+class AILangMemoryError(AILangError):
     CODE = "E080"
     DEFAULT_MESSAGE = "memory limit exceeded"
 
 
-class IOError(AILangError):  # noqa: A001
+class AILangIOError(AILangError):
     CODE = "E090"
     DEFAULT_MESSAGE = "I/O error"
 
@@ -225,6 +239,21 @@ class IOError(AILangError):  # noqa: A001
 class ConcurrencyError(AILangError):
     CODE = "E0A0"
     DEFAULT_MESSAGE = "concurrency error"
+
+
+# --- Retrocompatibilidad: aliases sin prefijo AILang ---
+# AUD-029: estos nombres shadowean builtins Python. Se mantienen por
+# retrocompatibilidad pero se recomienda usar los AILang* en código nuevo.
+
+TypeError = AILangTypeError        # noqa: A001
+NameError = AILangNameError        # noqa: A001
+ImportError = AILangImportError    # noqa: A001
+ValueError = AILangValueError      # noqa: A001
+IndexError = AILangIndexError      # noqa: A001
+AttributeError = AILangAttributeError  # noqa: A001
+TimeoutError = AILangTimeoutError  # noqa: A001
+MemoryError = AILangMemoryError    # noqa: A001
+IOError = AILangIOError            # noqa: A001
 
 
 # --- Test helpers ------------------------------------------------------------

@@ -184,10 +184,19 @@ class RecordType:
 
     def __call__(self, *args, **kwargs):
         data = {}
+        # AUD-020: fields puede ser list[str] o list[(name, type_ann)]
+        # Normalizar a solo nombres
+        field_names = []
+        for f in self.fields:
+            if isinstance(f, tuple):
+                field_names.append(f[0])
+            else:
+                field_names.append(f)
+
         if len(args) == 1 and isinstance(args[0], dict):
             data = dict(args[0])
         else:
-            for i, f in enumerate(self.fields):
+            for i, f in enumerate(field_names):
                 if i < len(args):
                     data[f] = args[i]
         for k, v in kwargs.items():
@@ -398,26 +407,51 @@ class Interpreter:
             env.define("brain_graph", brain_graph)
 
     def load_module(self, name: str) -> Any:
+        # AUD-015: usar ModuleResolver para circular dependency detection
         if name in self._module_cache:
             return self._module_cache[name]
         if name in self._builtins_mods:
             mod = self._builtins_mods[name]
             self._module_cache[name] = mod
             return mod
-        # archivo .ailang en module_path
+
+        # AUD-015: delegar resolución a ModuleResolver
+        try:
+            from ailang.modules import ModuleResolver, CircularImportError, ModuleNotFoundError as AIRModuleNotFound
+            resolver = ModuleResolver(module_path=self.module_path)
+            file_path = resolver.find_module_file(name)
+            if file_path is None:
+                raise AILangRuntimeError(f"módulo no encontrado: {name}")
+
+            # Cargar con circular dependency detection
+            try:
+                exports, _ = resolver.load_user_module(name)
+                from ailang.lang.stdlib import Module
+                mod = Module(name, exports)
+                self._module_cache[name] = mod
+                return mod
+            except CircularImportError as e:
+                raise AILangRuntimeError(f"dependencia circular: {e}")
+            except AIRModuleNotFound as e:
+                raise AILangRuntimeError(f"módulo no encontrado: {e}")
+        except AILangRuntimeError:
+            raise
+        except Exception:
+            # Fallback al método legacy si ModuleResolver falla
+            pass
+
+        # Método legacy (sin circular detection)
         rel = name.replace(".", "/") + ".ailang"
         for root in self.module_path:
             candidate = _Path(root) / rel
             if candidate.is_file():
                 text = candidate.read_text(encoding="utf-8")
-                # Ejecutar en entorno fresco; exportar bindings globales del módulo
                 mod_env = Env()
                 self._install_builtins(mod_env)
                 program = parse(text)
                 for stmt in program.body:
                     self.exec_stmt(stmt, mod_env)
                 exports = dict(mod_env.values)
-                # no reexportar builtins puros si se desea — se dejan por simplicidad
                 mod = Module(name, exports)
                 self._module_cache[name] = mod
                 return mod

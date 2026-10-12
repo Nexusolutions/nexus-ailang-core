@@ -13,10 +13,18 @@ from pathlib import Path
 
 
 def main() -> int:
+    # Add cwd to sys.path so the script can find ailang when run from /tmp/
+    import sys as _sys
+    cwd = str(Path.cwd())
+    if cwd not in _sys.path:
+        _sys.path.insert(0, cwd)
+
     try:
         from ailang.fmt import format_ast
     except ImportError as e:
         print(f"ERROR: no se pudo importar ailang.fmt: {e}", file=sys.stderr)
+        print(f"  cwd: {cwd}", file=sys.stderr)
+        print(f"  sys.path: {_sys.path}", file=sys.stderr)
         return 1
 
     examples_dir = Path("examples")

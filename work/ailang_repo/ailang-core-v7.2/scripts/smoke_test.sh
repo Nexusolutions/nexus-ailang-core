@@ -245,6 +245,13 @@ step_format_idempotency() {
     local tmp_py
     tmp_py=$(mktemp /tmp/ailang_fmt_idem.XXXXXX.py)
     cat > "$tmp_py" <<'PYEOF'
+import sys
+import os
+# Add cwd to path so ailang is importable when script runs from /tmp/
+cwd = os.getcwd()
+if cwd not in sys.path:
+    sys.path.insert(0, cwd)
+
 from ailang.fmt import format_ast
 import pathlib
 failed = []
@@ -259,7 +266,7 @@ if failed:
     raise SystemExit(1)
 print("format_ast idempotency: OK")
 PYEOF
-    if python "$tmp_py"; then
+    if PYTHONPATH="${PWD}:${PYTHONPATH:-}" python "$tmp_py"; then
         ok "Format idempotency OK"
         rm -f "$tmp_py"
         return 0

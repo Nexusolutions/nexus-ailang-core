@@ -214,8 +214,12 @@ def aes_encrypt(key_hex, plaintext, aad=None) -> Dict[str, str]:
     require("crypto.use", op_desc="crypto.aes_encrypt()")
     crypto = _require_crypto()
     key = bytes.fromhex(str(key_hex))
+    # AUD-073: wrap ValueError in AILangRuntimeError
     if len(key) != 32:
-        raise ValueError("AES-256 requiere key de 32 bytes (64 hex chars)")
+        from ailang.lang.errors import AILangValueError
+        raise AILangValueError(
+            "AES-256 requiere key de 32 bytes (64 hex chars)"
+        )
     if isinstance(plaintext, str):
         plaintext = plaintext.encode("utf-8")
     if isinstance(aad, str):
@@ -230,13 +234,21 @@ def aes_decrypt(key_hex, nonce_hex, ciphertext_hex, aad=None) -> bytes:
     """AES-256-GCM decrypt. Retorna plaintext bytes."""
     require("crypto.use", op_desc="crypto.aes_decrypt()")
     crypto = _require_crypto()
-    key = bytes.fromhex(str(key_hex))
-    nonce = bytes.fromhex(str(nonce_hex))
-    ct = bytes.fromhex(str(ciphertext_hex))
-    if isinstance(aad, str):
-        aad = aad.encode("utf-8")
-    aesgcm = crypto["aesgcm"](key)
-    return aesgcm.decrypt(nonce, ct, aad)
+    # AUD-074: wrap cryptography.exceptions.InvalidTag in AILangRuntimeError
+    try:
+        key = bytes.fromhex(str(key_hex))
+        nonce = bytes.fromhex(str(nonce_hex))
+        ct = bytes.fromhex(str(ciphertext_hex))
+        if isinstance(aad, str):
+            aad = aad.encode("utf-8")
+        aesgcm = crypto["aesgcm"](key)
+        return aesgcm.decrypt(nonce, ct, aad)
+    except Exception as e:
+        # InvalidTag, ValueError, etc. — wrap in AILangRuntimeError
+        from ailang.lang.errors import AILangRuntimeError
+        if isinstance(e, AILangRuntimeError):
+            raise
+        raise AILangRuntimeError(f"crypto.aes_decrypt failed: {e}", code="E073")
 
 
 # --- Secure Storage (Fernet) ---

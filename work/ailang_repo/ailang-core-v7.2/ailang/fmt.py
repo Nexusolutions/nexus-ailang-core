@@ -220,7 +220,15 @@ def _emit_stmt(node: Any, lines: list[str], indent: int) -> None:
         lines[-1] = "}"
     elif isinstance(node, A.RecordDef):
         _emit_indent(lines, indent)
-        lines[-1] = f"record {node.name} {{ {', '.join(node.fields)} }}"
+        # AUD-020: fields puede ser list[str] o list[(name, type_ann)]
+        field_strs = []
+        for f in node.fields:
+            if isinstance(f, tuple):
+                # (name, type_ann)
+                field_strs.append(f"{f[0]}: {f[1]}")
+            else:
+                field_strs.append(str(f))
+        lines[-1] = f"record {node.name} {{ {', '.join(field_strs)} }}"
     elif isinstance(node, A.InterfaceDef):
         _emit_indent(lines, indent)
         lines[-1] = f"interface {node.name} {{"

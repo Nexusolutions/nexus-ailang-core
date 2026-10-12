@@ -165,10 +165,15 @@ _default_context: Optional[CapabilityContext] = None
 
 
 def get_default_context() -> CapabilityContext:
-    """Retorna el contexto global. Por defecto permissive (modo legacy)."""
+    """Retorna el contexto global.
+
+    AUD-030: Por defecto RESTRICTIVE (deny all). Para obtener modo legacy
+    (permissive), usar `set_default_context(CapabilityContext.permissive())`
+    o pasar `--allow *` en CLI.
+    """
     global _default_context
     if _default_context is None:
-        _default_context = CapabilityContext.permissive()
+        _default_context = CapabilityContext.restrictive()
     return _default_context
 
 
@@ -179,7 +184,7 @@ def set_default_context(ctx: CapabilityContext) -> None:
 
 
 def reset_default_context() -> None:
-    """Resets al contexto por defecto (permissive)."""
+    """Resets al contexto por defecto (restrictive)."""
     global _default_context
     _default_context = None
 
@@ -192,16 +197,16 @@ def require(capability: str, *, op_desc: str = "") -> None:
 def parse_cli_capabilities(allow_list: list[str], deny_list: list[str] = None) -> CapabilityContext:
     """Construye un CapabilityContext desde flags CLI.
 
+    AUD-030: Si no se pasa ninguna flag, retorna contexto RESTRICTIVE (deny all).
+    El usuario debe conceder capabilities explícitamente con --allow.
+
     Args:
         allow_list: lista de capabilities concedidas (ej.: ["filesystem.read", "ai.query"])
         deny_list: lista de capabilities explícitamente denegadas
 
     Returns:
-        CapabilityContext configurado. Si allow_list está vacío, retorna
-        contexto permissive (modo legacy).
+        CapabilityContext configurado.
     """
-    if not allow_list and not deny_list:
-        return CapabilityContext.permissive()
     ctx = CapabilityContext.restrictive()
     for cap in allow_list:
         if cap not in KNOWN_CAPABILITIES and not cap.endswith(".*"):

@@ -100,6 +100,8 @@ def lower_mir_to_air(mir_fn: MIRFunction, hir_fn) -> AIRFunction:
     """Lowering: MIRFunction + HIRFunction → AIRFunction.
 
     T1: no crea un bloque entry vacío — usa los bloques del MIR directamente.
+    AUD-004/023: preserva LABEL pseudo-instructions para que el AIR interpreter
+    pueda resolver JUMP/JUMP_IF_FALSE targets.
     """
     air_fn = AIRFunction(
         name=mir_fn.name,
@@ -114,6 +116,14 @@ def lower_mir_to_air(mir_fn: MIRFunction, hir_fn) -> AIRFunction:
         air_block = AIRBlock(label=mir_block.label)
         for mir_instr in mir_block.instructions:
             if mir_instr.dead:
+                continue
+            # AUD-004: preserve LABEL pseudo-instructions
+            if mir_instr.op == "label":
+                air_block.instructions.append(AIRInstruction(
+                    opcode=_LABEL_OP,  # special opcode for LABEL
+                    operands=mir_instr.args,  # [label_name]
+                    source=SourceLocation(line=mir_instr.line),
+                ))
                 continue
             opcode = _mir_op_to_air_op(mir_instr.op)
             if opcode is None:
@@ -144,6 +154,10 @@ def lower_mir_to_air(mir_fn: MIRFunction, hir_fn) -> AIRFunction:
             air_fn.required_effects.update(instr.effects)
 
     return air_fn
+
+
+# AUD-004: Special opcode for LABEL pseudo-instructions (high number to avoid collision)
+_LABEL_OP = 9999
 
 
 def _mir_op_to_air_op(mir_op: str) -> Optional[int]:

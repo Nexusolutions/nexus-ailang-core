@@ -1,0 +1,39 @@
+// core_demo.ailang — Demuestra features core del lenguaje AILang.
+// Ejecutar: python -m ailang examples/core_demo.ailang
+
+// Variables y tipos
+let x = 42
+const PI = 3.14159
+let name = "AILang"
+
+// Funciones
+fn add(a, b) {
+    return a + b
+}
+
+fn factorial(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+
+// Control flow
+let i = 0
+while i < 5 {
+    print("i =", i)
+    i = i + 1
+}
+
+// Listas y loops
+let xs = [10, 20, 30]
+for x in xs {
+    print("x =", x)
+}
+
+// String interpolation (variable names only; for expressions use concatenation)
+let result = add(3, 4)
+let fact5 = factorial(5)
+print("Hello from ${name}! add(3, 4) = ${result}")
+print("factorial(5) = ${fact5}")
+print("PI = ${PI}")

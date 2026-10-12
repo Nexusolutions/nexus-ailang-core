@@ -1,0 +1,51 @@
+// oop_demo.ailang — Demuestra features OOP: classes, records, enums, match.
+
+// Class con herencia
+class Animal {
+    fn init(name) {
+        self.name = name
+    }
+    fn speak() {
+        return self.name + " makes a sound"
+    }
+}
+
+class Dog extends Animal {
+    fn speak() {
+        return self.name + " says Woof!"
+    }
+}
+
+class Cat extends Animal {
+    fn speak() {
+        return self.name + " says Meow!"
+    }
+}
+
+let dog = Dog("Rex")
+let cat = Cat("Whiskers")
+print(dog.speak())
+print(cat.speak())
+
+// Record
+record Point { x: int, y: int }
+let p = Point(3, 4)
+let px = p.x
+let py = p.y
+print("Point: (" + px + ", " + py + ")")
+
+// Enum
+enum Color { RED, GREEN, BLUE }
+
+// Match
+fn describe(n) {
+    match n {
+        case 0 { return "zero" }
+        case 1 { return "one" }
+        case _ { return "many" }
+    }
+}
+
+print(describe(0))
+print(describe(1))
+print(describe(42))
