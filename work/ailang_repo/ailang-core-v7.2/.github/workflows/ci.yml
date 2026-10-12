@@ -92,16 +92,7 @@ jobs:
             echo "examples/ directory not found — skipping format idempotency check"
             exit 0
           fi
-          python -c "
-          from ailang.fmt import format_ast
-          import pathlib
-          for f in pathlib.Path('examples').glob('*.ailang'):
-              src = f.read_text(encoding='utf-8')
-              out1 = format_ast(src)
-              out2 = format_ast(out1)
-              assert out1 == out2, f'format_ast no idempotente: {f}'
-          print('format_ast idempotency: OK')
-          "
+          python scripts/check_format_idempotency.py
 
   conformance:
     name: Conformance suite (interp ↔ VM parity)

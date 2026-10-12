@@ -59,11 +59,19 @@ class JITCompiler:
             fn_name: nombre de la función llamada
 
         Returns:
-            True si la función superó el threshold y debe compilarse
+            True si la función superó el threshold y debe compilarse.
+            El compilador posteriromente intentará compilarla; si LLVM no
+            está disponible, compile_function() retornará False pero el
+            profiling sigue funcionando.
+
+        Note:
+            El profiling SIEMPRE se ejecuta (no requiere llvmlite).
+            Solo la compilación requiere llvmlite.
         """
-        if not self.enabled or not self._llvm_available:
+        if not self.enabled:
             return False
 
+        # Profiling SIEMPRE se ejecuta (no requiere LLVM)
         if fn_name not in self._profiles:
             self._profiles[fn_name] = HotFunction(name=fn_name)
 
@@ -71,6 +79,7 @@ class JITCompiler:
         prof.call_count += 1
 
         # Si superó threshold y no está compilada, marcar para compilación
+        # (la compilación posterior fallará graciosamente si no hay LLVM)
         if prof.call_count >= self.threshold and not prof.compiled:
             return True
         return False
