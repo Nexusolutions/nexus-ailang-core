@@ -675,3 +675,34 @@ Stage Summary:
   * `tests/test_windows_simulation.py` (10 tests estructurales).
   * `.github/workflows/ci.yml` (con job cross-platform dedicado).
   * `ailang_core.py` (2 fixes para portabilidad Windows).
+
+---
+Task ID: P6
+Agent: Main (smoke test + push prep)
+Task: Continuar con el siguiente paso recomendado (smoke_test.sh + push a GitHub)
+
+Work Log:
+- Verificado estado del repo: working tree clean (cambios P5 ya en commit 9c90d3e).
+- Detectado que el commit tenía mensaje genérico (UUID). Amend con mensaje descriptivo:
+  "fix(P5): cross-platform portability (Windows/Linux/macOS)".
+- Creado `scripts/smoke_test.sh` (393 LOC, bash):
+  * Replica los 8 pasos del CI: doctor, pytest, monolith, cross-platform, version, examples, format idempotency, structural scan.
+  * Modo `--quick` para saltar monolith y examples.
+  * Helpers con colores (info/ok/warn/fail) y summary final.
+  * Verificado localmente: 8/8 pasos OK.
+- Commit `74590b8`: "chore(P5): add scripts/smoke_test.sh".
+- Intentado push a `origin/main` (https://github.com/Nexusolutions/nexus-ailang-core.git):
+  * Falla: "could not read Username for 'https://github.com'".
+  * Causa: este entorno no tiene credenciales GitHub configuradas
+    (no GH_TOKEN, no GITHUB_TOKEN, no ~/.ssh, no ~/.git-credentials, no gh CLI).
+
+Stage Summary:
+- Commits pendientes de push (2):
+  * `9c90d3e` fix(P5): cross-platform portability (Windows/Linux/macOS)
+  * `74590b8` chore(P5): add scripts/smoke_test.sh — replica el flujo del CI localmente
+- Smoke test verificado localmente (8/8 OK).
+- Para completar el push, el usuario debe ejecutar manualmente:
+    cd /home/z/my-project/work/ailang_repo/ailang-core-v7.2
+    git push origin main
+- Después del push, monitorear el workflow run en:
+    https://github.com/Nexusolutions/nexus-ailang-core/actions
